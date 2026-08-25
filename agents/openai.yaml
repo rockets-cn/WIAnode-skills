@@ -1,0 +1,4 @@
+interface:
+  display_name: "WIAnode 配置"
+  short_description: "引导确认、写入并生成含 SKU 的 WIAnode 配置报告"
+  default_prompt: "使用 $wianode-config 引导我配置 WIAnode，写入前向我确认，完成后生成含 SKU 的报告。"
