@@ -1,0 +1,4 @@
+interface:
+  display_name: "WIAnode × UNIHIKER K10"
+  short_description: "用 PlatformIO 构建 K10 与 WIAnode 的 MQTT 交互"
+  default_prompt: "使用 $wianode-k10-platformio 创建并烧录一个 UNIHIKER K10 与 WIAnode 交互的 PlatformIO 项目。"
