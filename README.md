@@ -21,35 +21,44 @@
 
 ## 安装
 
-将仓库克隆到 Codex 的个人 skills 目录，并把目标文件夹命名为 `wianode-config`：
+将仓库克隆到 Codex 的本地源码目录，再把两个 skill 分别链接到个人 skills 目录。Windows PowerShell：
 
 ```powershell
-git clone https://github.com/rockets-cn/WIAnode-skills.git "$env:USERPROFILE\.codex\skills\wianode-config"
-```
-
-更新已有安装：
-
-```powershell
-git -C "$env:USERPROFILE\.codex\skills\wianode-config" pull
-```
-
-安装后检查 Codex 的 skill 列表中是否出现 `wianode-config`。
-
-如需 TouchDesigner skill，再为仓库内的 skill 目录创建一个目录联接：
-
-```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.codex\repos" | Out-Null
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.codex\skills" | Out-Null
+git clone https://github.com/rockets-cn/WIAnode-skills.git "$env:USERPROFILE\.codex\repos\WIAnode-skills"
+New-Item -ItemType Junction `
+  -Path "$env:USERPROFILE\.codex\skills\wianode-config" `
+  -Target "$env:USERPROFILE\.codex\repos\WIAnode-skills\skills\wianode-config"
 New-Item -ItemType Junction `
   -Path "$env:USERPROFILE\.codex\skills\wianode-touchdesigner" `
-  -Target "$env:USERPROFILE\.codex\skills\wianode-config\skills\wianode-touchdesigner"
+  -Target "$env:USERPROFILE\.codex\repos\WIAnode-skills\skills\wianode-touchdesigner"
 ```
 
-macOS/Linux 可使用符号链接：
+macOS/Linux：
 
 ```bash
-git clone https://github.com/rockets-cn/WIAnode-skills.git "$HOME/.codex/skills/wianode-config"
-ln -s "$HOME/.codex/skills/wianode-config/skills/wianode-touchdesigner" \
+mkdir -p "$HOME/.codex/repos" "$HOME/.codex/skills"
+git clone https://github.com/rockets-cn/WIAnode-skills.git "$HOME/.codex/repos/WIAnode-skills"
+ln -s "$HOME/.codex/repos/WIAnode-skills/skills/wianode-config" \
+  "$HOME/.codex/skills/wianode-config"
+ln -s "$HOME/.codex/repos/WIAnode-skills/skills/wianode-touchdesigner" \
   "$HOME/.codex/skills/wianode-touchdesigner"
 ```
+
+更新已有安装只需拉取仓库。Windows PowerShell：
+
+```powershell
+git -C "$env:USERPROFILE\.codex\repos\WIAnode-skills" pull
+```
+
+macOS/Linux：
+
+```bash
+git -C "$HOME/.codex/repos/WIAnode-skills" pull
+```
+
+安装后检查 Codex 的 skill 列表中是否同时出现 `wianode-config` 和 `wianode-touchdesigner`。曾按旧版说明把整个仓库克隆为 `wianode-config` 的用户，需要先保留本地改动，再迁移到上述双目录结构。
 
 `$wianode-touchdesigner` 还需要 TouchDesigner MCP。首次调用时，skill 可以自动下载官方组件、通过 Computer Use 把 `mcp_webserver_base.tox` 导入当前 TouchDesigner 项目的 `/project1`，并为 Codex 注册服务：
 
@@ -102,15 +111,15 @@ TouchDesigner skill 会先检查当前项目与 MQTT 连接，优先复用已有
 
 ## 给 Agent 的说明
 
-[`SKILL.md`](SKILL.md) 是执行入口和行为规范。加载本 skill 后应完整读取它，并按任务需要路由到对应参考文件：
+[`skills/wianode-config/SKILL.md`](skills/wianode-config/SKILL.md) 是配置 skill 的执行入口和行为规范。加载后应完整读取它，并按任务需要路由到对应参考文件：
 
 | 资源 | 读取时机 |
 | --- | --- |
-| [`references/config-format.md`](references/config-format.md) | 创建、修改或审查 `config.txt` 前 |
-| [`references/sensors.md`](references/sensors.md) | 映射模块 SKU、端口标签或 I2C 地址时 |
-| [`references/mqtt.md`](references/mqtt.md) | 连接 MQTT 客户端或诊断数据流时 |
-| [`references/completion-report.md`](references/completion-report.md) | 每次引导配置尝试结束时 |
-| [`scripts/validate_config.py`](scripts/validate_config.py) | 配置编辑完成后进行只读校验 |
+| [`skills/wianode-config/references/config-format.md`](skills/wianode-config/references/config-format.md) | 创建、修改或审查 `config.txt` 前 |
+| [`skills/wianode-config/references/sensors.md`](skills/wianode-config/references/sensors.md) | 映射模块 SKU、端口标签或 I2C 地址时 |
+| [`skills/wianode-config/references/mqtt.md`](skills/wianode-config/references/mqtt.md) | 连接 MQTT 客户端或诊断数据流时 |
+| [`skills/wianode-config/references/completion-report.md`](skills/wianode-config/references/completion-report.md) | 每次引导配置尝试结束时 |
+| [`skills/wianode-config/scripts/validate_config.py`](skills/wianode-config/scripts/validate_config.py) | 配置编辑完成后进行只读校验 |
 
 Agent 必须遵守以下约束：
 
@@ -136,7 +145,7 @@ Agent 必须遵守以下约束：
 需要 Python 3.9 或更高版本。校验现有配置：
 
 ```powershell
-python scripts/validate_config.py <WIAnode盘符>:\config.txt
+python skills/wianode-config/scripts/validate_config.py <WIAnode盘符>:\config.txt
 ```
 
 校验器不会显示 Wi-Fi 密码值。成功返回退出码 `0`，配置错误返回 `1`，文件读取或编码错误返回 `2`。未知字段只产生警告，以便保留新固件可能增加的配置项。
@@ -145,17 +154,19 @@ python scripts/validate_config.py <WIAnode盘符>:\config.txt
 
 ```text
 .
-├── SKILL.md
-├── agents/
-│   └── openai.yaml
-├── references/
-│   ├── completion-report.md
-│   ├── config-format.md
-│   ├── mqtt.md
-│   └── sensors.md
-├── scripts/
-│   └── validate_config.py
+├── README.md
 └── skills/
+    ├── wianode-config/
+    │   ├── SKILL.md
+    │   ├── agents/
+    │   │   └── openai.yaml
+    │   ├── references/
+    │   │   ├── completion-report.md
+    │   │   ├── config-format.md
+    │   │   ├── mqtt.md
+    │   │   └── sensors.md
+    │   └── scripts/
+    │       └── validate_config.py
     └── wianode-touchdesigner/
         ├── SKILL.md
         ├── agents/
