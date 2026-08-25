@@ -1,8 +1,13 @@
-# WIAnode Config Skill
+# WIAnode-skills
 
-面向 [DFRobot WIAnode](https://wiki.dfrobot.com.cn/WIAnode) 的 Codex 配置 skill。它把设备配置整理成一个有确认门禁的引导流程：识别配置盘、采集 Wi-Fi 与传感器信息、根据 SKU 映射接口、备份和写入 `config.txt`、校验结果，并生成包含 SKU 的完成报告。
+面向 [DFRobot WIAnode](https://wiki.dfrobot.com.cn/WIAnode) 的 Codex skills 集合，覆盖设备配置与 TouchDesigner 自然语言交互。
 
-## 主要能力
+| Skill | 用途 |
+| --- | --- |
+| `$wianode-config` | 引导配置设备、校验 `config.txt`、诊断网络和 MQTT |
+| `$wianode-touchdesigner` | 通过 [touchdesigner-mcp](https://github.com/8beeeaaat/touchdesigner-mcp) 用自然语言搭建、修改和排查 WIAnode 交互网络 |
+
+## `$wianode-config` 主要能力
 
 - 用户只说“我要配置 WIAnode”时，主动给出连接设备、安装模块和确认 SKU 的指示。
 - 通过 `config.txt` 识别 WIAnode 移动盘，不依赖固定卷标或盘符。
@@ -19,7 +24,7 @@
 将仓库克隆到 Codex 的个人 skills 目录，并把目标文件夹命名为 `wianode-config`：
 
 ```powershell
-git clone https://github.com/rockets-cn/WAInode-skill.git "$env:USERPROFILE\.codex\skills\wianode-config"
+git clone https://github.com/rockets-cn/WIAnode-skills.git "$env:USERPROFILE\.codex\skills\wianode-config"
 ```
 
 更新已有安装：
@@ -29,6 +34,30 @@ git -C "$env:USERPROFILE\.codex\skills\wianode-config" pull
 ```
 
 安装后检查 Codex 的 skill 列表中是否出现 `wianode-config`。
+
+如需 TouchDesigner skill，再为仓库内的 skill 目录创建一个目录联接：
+
+```powershell
+New-Item -ItemType Junction `
+  -Path "$env:USERPROFILE\.codex\skills\wianode-touchdesigner" `
+  -Target "$env:USERPROFILE\.codex\skills\wianode-config\skills\wianode-touchdesigner"
+```
+
+macOS/Linux 可使用符号链接：
+
+```bash
+git clone https://github.com/rockets-cn/WIAnode-skills.git "$HOME/.codex/skills/wianode-config"
+ln -s "$HOME/.codex/skills/wianode-config/skills/wianode-touchdesigner" \
+  "$HOME/.codex/skills/wianode-touchdesigner"
+```
+
+`$wianode-touchdesigner` 还需要 TouchDesigner MCP。首次调用时，skill 可以自动下载官方组件、通过 Computer Use 把 `mcp_webserver_base.tox` 导入当前 TouchDesigner 项目的 `/project1`，并为 Codex 注册服务：
+
+```powershell
+codex mcp add touchdesigner -- npx -y touchdesigner-mcp-server@latest --stdio
+```
+
+如果当前环境无法控制 TouchDesigner UI，skill 会返回已校验的 `.tox` 绝对路径，只保留一次拖入 `/project1` 的手动步骤。完成注册后仍需重启 Codex，并保持 TouchDesigner 与 `mcp_webserver_base` 运行。
 
 ## 使用
 
@@ -43,6 +72,22 @@ git -C "$env:USERPROFILE\.codex\skills\wianode-config" pull
 ```text
 使用 $wianode-config 引导我配置 WIAnode，写入前向我确认，完成后生成含 SKU 的报告。
 ```
+
+TouchDesigner 中可以直接描述目标，例如：
+
+```text
+使用 $wianode-touchdesigner，把 P1 的按钮映射到当前项目的 switch1，按下时切换到第二路画面。
+```
+
+```text
+使用 $wianode-touchdesigner，把 SEN0224 加速度计 X 轴映射成立方体旋转，并加一点平滑。
+```
+
+```text
+使用 $wianode-touchdesigner，让 P5 上的 SER0053 舵机转到 200°；发送前先向我展示 MQTT 指令并确认。
+```
+
+TouchDesigner skill 会先检查当前项目与 MQTT 连接，优先复用已有节点；传感器读取可直接构建，向 `topic_output` 发送真实执行器指令前则必须单独确认。
 
 典型流程：
 
@@ -108,10 +153,24 @@ python scripts/validate_config.py <WIAnode盘符>:\config.txt
 │   ├── config-format.md
 │   ├── mqtt.md
 │   └── sensors.md
-└── scripts/
-    └── validate_config.py
+├── scripts/
+│   └── validate_config.py
+└── skills/
+    └── wianode-touchdesigner/
+        ├── SKILL.md
+        ├── agents/
+        │   └── openai.yaml
+        ├── references/
+        │   ├── automatic-install.md
+        │   ├── interaction-patterns.md
+        │   ├── touchdesigner-mcp.md
+        │   └── wianode-bridge.md
+        ├── scripts/
+        │   └── prepare_touchdesigner_mcp.py
+        └── tests/
+            └── test_prepare_touchdesigner_mcp.py
 ```
 
 ## 文档依据
 
-配置字段、接口类型、传感器清单、MQTT 主题和指示灯含义整理自 [DFRobot WIAnode 官方 Wiki](https://wiki.dfrobot.com.cn/WIAnode)。官方页面的 MQTT 用户名存在不一致：本 skill 优先采用主 MQTT 与 TouchDesigner 章节一致的 `wianode`，仅在认证失败时把 `mqtt` 作为显式诊断备选。
+配置字段、接口类型、传感器清单、MQTT 主题和指示灯含义整理自 [DFRobot WIAnode 官方 Wiki](https://wiki.dfrobot.com.cn/WIAnode)。

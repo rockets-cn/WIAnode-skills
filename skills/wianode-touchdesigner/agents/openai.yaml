@@ -1,0 +1,4 @@
+interface:
+  display_name: "WIAnode × TouchDesigner"
+  short_description: "用自然语言搭建和控制 WIAnode 的 TouchDesigner 交互"
+  default_prompt: "使用 $wianode-touchdesigner 把 WIAnode 传感器接入当前 TouchDesigner 项目，并按我的描述创建交互。"
