@@ -18,8 +18,11 @@ constexpr bool ENABLE_ACTUATOR_OUTPUT = false;
 
 constexpr uint32_t SCREEN_BACKGROUND = 0x000000;
 constexpr uint8_t MAX_MEASUREMENTS = 3;
+constexpr uint8_t MQTT_DRAIN_LIMIT = 8;
 constexpr unsigned long WIFI_RETRY_MS = 5000;
 constexpr unsigned long MQTT_RETRY_MS = 3000;
+constexpr unsigned long UI_IDLE_MS = 5;
+constexpr unsigned long DIAGNOSTIC_LOG_MS = 5000;
 
 UNIHIKER_K10 k10;
 WiFiClient wifiClient;
@@ -27,6 +30,10 @@ PubSubClient mqtt(wifiClient);
 
 unsigned long lastWifiAttempt = 0;
 unsigned long lastMqttAttempt = 0;
+unsigned long lastUiRefresh = 0;
+unsigned long lastDiagnosticLog = 0;
+unsigned long mqttPacketsSinceLog = 0;
+unsigned long uiFramesSinceLog = 0;
 String measurementLines[MAX_MEASUREMENTS];
 bool measurementsDirty = false;
 
@@ -44,7 +51,7 @@ void drawRow(uint8_t row, const String &text, uint32_t color) {
 }
 
 void renderMeasurementsIfNeeded() {
-  if (!measurementsDirty) {
+  if (!measurementsDirty || millis() - lastUiRefresh < UI_IDLE_MS) {
     return;
   }
   measurementsDirty = false;
@@ -54,6 +61,8 @@ void renderMeasurementsIfNeeded() {
                            0x00FF00);
   }
   k10.canvas->updateCanvas();
+  lastUiRefresh = millis();
+  ++uiFramesSinceLog;
 }
 
 void onMqttMessage(char *topic, uint8_t *payload, unsigned int length) {
@@ -68,22 +77,30 @@ void onMqttMessage(char *topic, uint8_t *payload, unsigned int length) {
     return;
   }
 
+  ++mqttPacketsSinceLog;
   const JsonObjectConst values = document.as<JsonObjectConst>();
+  String nextLines[MAX_MEASUREMENTS];
   uint8_t index = 0;
   for (JsonPairConst item : values) {
     String value;
     serializeJson(item.value(), value);
-    const String measurement = String(item.key().c_str()) + "=" + value;
-    Serial.println(measurement);
-    measurementLines[index] = measurement;
+    nextLines[index] = String(item.key().c_str()) + "=" + value;
     if (++index >= MAX_MEASUREMENTS) {
       break;
     }
   }
   while (index < MAX_MEASUREMENTS) {
-    measurementLines[index++] = "";
+    nextLines[index++] = "";
   }
-  measurementsDirty = true;
+
+  bool changed = false;
+  for (uint8_t line = 0; line < MAX_MEASUREMENTS; ++line) {
+    if (measurementLines[line] != nextLines[line]) {
+      measurementLines[line] = nextLines[line];
+      changed = true;
+    }
+  }
+  measurementsDirty = measurementsDirty || changed;
 }
 
 void connectWifiIfNeeded() {
@@ -128,6 +145,30 @@ void connectMqttIfNeeded() {
     Serial.printf("MQTT connect failed: state=%d\n", mqtt.state());
     drawRow(2, "MQTT: retrying", 0xFFFF00);
   }
+}
+
+void serviceMqtt() {
+  for (uint8_t packet = 0;
+       packet < MQTT_DRAIN_LIMIT && mqtt.connected(); ++packet) {
+    mqtt.loop();
+  }
+}
+
+void logRuntimeStatusIfNeeded() {
+  const unsigned long now = millis();
+  const unsigned long elapsed = now - lastDiagnosticLog;
+  if (elapsed < DIAGNOSTIC_LOG_MS) {
+    return;
+  }
+
+  const double rxHz = mqttPacketsSinceLog * 1000.0 / elapsed;
+  const double uiHz = uiFramesSinceLog * 1000.0 / elapsed;
+  lastDiagnosticLog = now;
+  mqttPacketsSinceLog = 0;
+  uiFramesSinceLog = 0;
+  Serial.printf("Status WiFi=%s MQTT=%s RX=%.1fHz UI=%.1fHz\n",
+                WiFi.status() == WL_CONNECTED ? "connected" : "offline",
+                mqtt.connected() ? "connected" : "offline", rxHz, uiHz);
 }
 
 bool publishWianodeCommand(const JsonDocument &command) {
@@ -179,9 +220,8 @@ void setup() {
 void loop() {
   connectWifiIfNeeded();
   connectMqttIfNeeded();
-  if (mqtt.connected()) {
-    mqtt.loop();
-  }
+  serviceMqtt();
   renderMeasurementsIfNeeded();
-  delay(10);
+  logRuntimeStatusIfNeeded();
+  delay(1);
 }

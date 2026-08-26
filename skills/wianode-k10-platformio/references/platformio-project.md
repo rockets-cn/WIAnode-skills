@@ -76,7 +76,9 @@ On Windows or offline workshop installations, use the `$unihiker-k10-platformio`
 - Retry Wi-Fi and MQTT on bounded intervals instead of tight reconnect loops.
 - Generate a unique MQTT client ID from the K10 MAC address so multiple boards do not disconnect one another.
 - Increase the PubSubClient buffer before subscribing when payloads may exceed its default packet size. The template uses 1024 bytes.
-- Initialize the K10 background once. Update only changed text rows or regions and call `updateCanvas()` once per change.
+- Initialize the K10 background once. Canvas screens update only changed text rows or regions and call `updateCanvas()` once per visible change. For polished or high-rate dashboards, read `lvgl-high-rate-dashboard.md` and create native LVGL objects once.
+- At sending intervals below 100 ms, do not pair one `mqtt.loop()` call with one display flush. Coalesce to the latest validated value and use a bounded PubSubClient drain before rendering.
+- Do not print every high-rate sensor packet. Count receive and UI updates over a time window and emit one credential-free diagnostic line instead.
 - Keep `Model=None` unless the requested application genuinely uses K10 AI/voice features. Preserve factory model partitions if those features are introduced.
 
 ## Verification sequence
@@ -87,4 +89,5 @@ On Windows or offline workshop installations, use the `$unihiker-k10-platformio`
 4. Serial shows MQTT connected and subscribed to `topic_input`.
 5. A real WIAnode packet is parsed without a JSON error.
 6. The K10 screen updates without full-screen redraw flicker.
-7. For output-enabled firmware, only the confirmed trigger and bounded payload publish; physical behavior remains user-observed evidence.
+7. For latency-sensitive dashboards, K10 receive rate stays close to an independently measured broker rate and the UI displays the latest value rather than a backlog.
+8. For output-enabled firmware, only the confirmed trigger and bounded payload publish; physical behavior remains user-observed evidence.

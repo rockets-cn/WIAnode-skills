@@ -12,6 +12,7 @@ Turn the user's interaction description into a self-contained UNIHIKER K10 Platf
 - Read [references/platformio-project.md](references/platformio-project.md) when creating, building, uploading, monitoring, or diagnosing a project.
 - Read [references/mqtt-contract.md](references/mqtt-contract.md) before implementing WIAnode connection, packet parsing, or publishing.
 - Read [references/interaction-patterns.md](references/interaction-patterns.md) when mapping K10 inputs/outputs to WIAnode data or actuators.
+- Read [references/lvgl-high-rate-dashboard.md](references/lvgl-high-rate-dashboard.md) when the user wants a polished LVGL interface, the WIAnode interval is below 100 ms, or the screen appears delayed despite frequent packets.
 - Use `$wianode-config` first when WIAnode Wi-Fi, port modes, or attached SKUs are not configured. This skill must not edit the device's `config.txt`.
 - Follow the installed `$unihiker-k10-platformio` skill for K10 API lookup, toolchain setup, USB upload, serial monitoring, display refresh, AI model partitions, and offline workshop support.
 
@@ -32,8 +33,8 @@ Keep Wi-Fi credentials in `include/secrets.h`, which the template excludes from 
 1. Detect an existing PlatformIO project from `platformio.ini`. If none exists, copy `assets/template/wianode-k10/` into a new project directory. Do not create Arduino CLI or MicroPython files.
 2. Preserve the K10 PlatformIO environment from the template: DFRobot platform, `unihiker_k10` board, Arduino framework, USB CDC flags, and `Model=None` for ordinary Wi-Fi/MQTT projects.
 3. Copy `include/secrets.example.h` to `include/secrets.h` and fill only the supplied Wi-Fi and WIAnode values. Do not commit the populated file.
-4. Build a sensor-only tracer bullet first: connect Wi-Fi, connect MQTT with a unique client ID, subscribe to `topic_input`, parse strict JSON, print safe diagnostics, and update the K10 screen with partial redraws.
-5. Add the requested mapping as the smallest visible change. Keep `mqtt.loop()` responsive, use bounded reconnect intervals, clamp mapped values, and rate-limit high-frequency updates.
+4. Build a sensor-only tracer bullet first: connect Wi-Fi, connect MQTT with a unique client ID, subscribe to `topic_input`, parse strict JSON, print safe diagnostics, and update the K10 screen with partial redraws. For high-rate streams, measure broker publish rate separately from K10 receive and UI rates before tuning.
+5. Add the requested mapping as the smallest visible change. Keep `mqtt.loop()` responsive, use bounded reconnect intervals, clamp mapped values, and rate-limit physical outputs. Coalesce high-rate sensor packets to the latest value instead of drawing every packet; when PubSubClient falls behind, drain a small bounded batch before rendering.
 6. Build with `pio run -d <project>`. Fix all compile errors before upload. Use `pio device list` to resolve the board, then upload with `pio run -d <project> -t upload --upload-port <port>`.
 7. Monitor at 115200 baud and verify Wi-Fi, MQTT, `topic_input` subscription, and at least one real packet when available. Never claim a physical output occurred without user observation.
 
@@ -58,6 +59,7 @@ Report separately:
 - build result and upload port;
 - Wi-Fi and MQTT connection state without credentials;
 - observed `topic_input` keys and latest safe values;
+- for reported latency, broker publish rate, K10 receive rate, and UI update rate as separate measurements;
 - actuator logic enabled or disabled;
 - commands actually published and physical results still `待用户确认`.
 

@@ -29,13 +29,18 @@ class WianodeK10TemplateTests(unittest.TestCase):
         self.assertIn('TOPIC_INPUT[] = "topic_input"', source)
         self.assertIn('TOPIC_OUTPUT[] = "topic_output"', source)
         self.assertIn("mqtt.loop()", source)
+        self.assertIn("MQTT_DRAIN_LIMIT = 8", source)
+        self.assertIn("packet < MQTT_DRAIN_LIMIT && mqtt.connected()", source)
         self.assertIn("renderMeasurementsIfNeeded()", source)
-        self.assertIn("measurementsDirty = true", source)
+        self.assertIn("measurementsDirty = measurementsDirty || changed", source)
+        self.assertIn("lastUiRefresh = millis()", source)
+        self.assertIn("DIAGNOSTIC_LOG_MS = 5000", source)
         callback = source.split("void onMqttMessage", 1)[1].split(
             "void connectWifiIfNeeded", 1
         )[0]
         self.assertNotIn("drawRow(", callback)
         self.assertNotIn("updateCanvas()", callback)
+        self.assertNotIn("Serial.println(measurement)", callback)
         self.assertIn("include/secrets.h", ignore)
         self.assertFalse((TEMPLATE / "include" / "secrets.h").exists())
 

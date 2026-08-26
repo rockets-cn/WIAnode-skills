@@ -6,12 +6,14 @@ Read this reference when mapping K10 inputs/outputs to WIAnode data or actuators
 
 | Request | Mapping |
 | --- | --- |
-| Show a WIAnode sensor on K10 | observed MQTT key → JSON value → padded text row → partial canvas update |
+| Show a WIAnode sensor on K10 | observed MQTT key → JSON value → padded Canvas row or persistent LVGL widget → partial update |
 | Use a button as a K10 indicator | `pN_input_val` → threshold 0/1 → K10 RGB or screen state |
 | Alarm on temperature/distance | observed key → validated numeric value → threshold/hysteresis → K10 buzzer/RGB |
 | Visualize movement | accelerometer/distance key → clamp/normalize → small screen region or indicator |
 
 Do not redraw the entire K10 screen in the MQTT callback. Save the latest value, then update only the affected row or region from the main loop.
+
+For streams faster than 10 Hz, separate network ingestion from presentation: receive and validate every packet, overwrite pending values, and render only the latest dirty state. Read `lvgl-high-rate-dashboard.md` before building a native LVGL dashboard or tuning apparent display latency.
 
 ## K10 inputs to WIAnode actuators
 
