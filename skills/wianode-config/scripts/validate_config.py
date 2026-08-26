@@ -14,6 +14,9 @@ PORT_VALUES = {
     **{f"P{i}": {"input", "dht11", "ds18b20", "ws2812"} for i in range(1, 5)},
     **{f"P{i}": {"servo180", "servo300", "servo360"} for i in range(5, 7)},
 }
+FIRMWARE_PORT_VALUES = {
+    **{f"P{i}": {"output"} for i in range(1, 5)},
+}
 KNOWN_KEYS = {
     "WiFi_Name",
     "WiFi_Password",
@@ -23,6 +26,7 @@ KNOWN_KEYS = {
     *PORT_VALUES,
     "Sending_Interval(0.02-10s)",
     "LED_State",
+    "State_LED",
 }
 
 
@@ -98,6 +102,10 @@ def validate(values: dict[str, str]) -> tuple[list[str], list[str]]:
         elif value not in allowed:
             if value.lower() in allowed:
                 warnings.append(f"{key} uses non-canonical casing {value}; Wiki examples use {value.lower()}")
+            elif value in FIRMWARE_PORT_VALUES.get(key, set()):
+                warnings.append(
+                    f"{key} uses firmware-specific value {value}; Wiki does not document it"
+                )
             else:
                 errors.append(f"{key} value is not valid for that port type")
 
@@ -111,10 +119,21 @@ def validate(values: dict[str, str]) -> tuple[list[str], list[str]]:
         elif not 0.02 <= float(match.group(1)) <= 10:
             errors.append(f"{interval_key} must be between 0.02s and 10s")
 
-    if "LED_State" not in values:
+    has_led_state = "LED_State" in values
+    has_legacy_state_led = "State_LED" in values
+    if not has_led_state and not has_legacy_state_led:
         warnings.append("missing documented key LED_State")
-    elif values["LED_State"] not in {"on", "off"}:
-        errors.append("LED_State must be lowercase on or off")
+    else:
+        if has_legacy_state_led:
+            if has_led_state:
+                errors.append("both LED_State and legacy State_LED are present; keep only LED_State")
+            else:
+                errors.append("legacy key State_LED is not writable; replace it with official LED_State")
+        for key in ("LED_State", "State_LED"):
+            if key not in values:
+                continue
+            if values[key] not in {"on", "off"}:
+                errors.append(f"{key} must be lowercase on or off")
 
     return errors, warnings
 
