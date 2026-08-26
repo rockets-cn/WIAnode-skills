@@ -23,8 +23,39 @@ For streams faster than 10 Hz, separate network ingestion from presentation: rec
 | K10 accelerometer | servo angle | dead zone, smoothing, clamp, publish interval, mechanical safe range |
 | K10 light sensor | WS2812 brightness/color | normalize, RGB clamp 0–255, pixel-count validation, publish interval |
 | Timer/state machine | actuator sequence | bounded steps, explicit stop condition, no retained messages |
+| WIAnode P1 knob forwarded via K10 | P5/P6 servo angle | dynamic-range mapping, dead zone, clamp, publish on real movement, fail-safe on disconnect |
 
 These mappings require `ENABLE_ACTUATOR_OUTPUT = true`, which may be set only after the confirmation preview in `SKILL.md`.
+
+### Confirmed knob-to-servo recipe (P1 DFR0054 → P5 SER0053, field-tested)
+
+Preview and confirm P5, `SER0053`, `servo300`, the mechanical safe range (30–270°), the dead zone (≥1°), the publish rule ("every knob change, bounded by the 0.02 s WIAnode interval"), and payload `{"p5":"<angle>"}` before enabling output. Then:
+
+```cpp
+bool previousButtonA = false;
+
+int mapKnobToServoAngle() {
+  const double span = knob.observedMax - knob.observedMin;
+  if (span < 0.000001) return SERVO_INITIAL_ANGLE;
+  const double ratio = constrain((knob.value - knob.observedMin) / span, 0.0, 1.0);
+  return SERVO_MIN_ANGLE +
+         static_cast<int>(round(ratio * (SERVO_MAX_ANGLE - SERVO_MIN_ANGLE)));
+}
+
+void handleConfirmedKnobServo() {
+  if (!ENABLE_ACTUATOR_OUTPUT || !knob.seen) return;
+  // Do NOT gate on the UI dirty flag: the renderer consumes it earlier in
+  // loop(), so the actuator would never see a change. Compare mapped angles.
+  const int target = mapKnobToServoAngle();
+  if (abs(target - desiredServoAngle) < SERVO_DEADZONE_DEG) return;
+  if (publishWianodeCommand({"p5": String(target)})) {
+    desiredServoAngle = target;
+    // update servo label under the LVGL mutex
+  }
+}
+```
+
+Call `handleConfirmedKnobServo()` from `loop()` without blocking. The observed dynamic range (`observedMin..observedMax`) adapts to the actual potentiometer travel instead of guessing a full scale; a one-pixel jitter in the raw ADC is absorbed by the dead zone. A successful publish is not physical confirmation—ask the user to verify the servo moved.
 
 ### Confirmed K10 A → P5 SER0053 recipe
 

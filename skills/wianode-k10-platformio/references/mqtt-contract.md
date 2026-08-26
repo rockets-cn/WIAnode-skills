@@ -24,6 +24,28 @@ WIAnode publishes a JSON object whose keys describe port, sensor type, and measu
 
 Parse with `deserializeJson(doc, payload, length)`. Reject malformed or non-object payloads. Discover the actual keys from real packets instead of inventing them. Treat missing updates as stale data; do not fabricate sensor values unless the user explicitly requests a labeled simulation mode.
 
+### I2C module key discovery (field-tested)
+
+I2C modules are auto-detected by WIAnode, and the docs do not guarantee their exact `topic_input` key names. For example, a SEN0228 lux sensor publishes its value under a key that contains `lux`, but the full name varies by firmware. When parsing, iterate the JSON object and match a case-insensitive key fragment instead of hard-coding a guessed key:
+
+```cpp
+bool readLuxValue(JsonObjectConst values, double &result) {
+  for (JsonPairConst pair : values) {
+    const char *key = pair.key().c_str();
+    if (!key) continue;
+    bool found = false;
+    for (const char *p = key; *p; ++p) {
+      if ((*p == 'l' || *p == 'L') && (p[1] == 'u' || p[1] == 'U') &&
+          (p[2] == 'x' || p[2] == 'X')) { found = true; break; }
+    }
+    if (found && readNumeric(values, key, result)) return true;
+  }
+  return false;
+}
+```
+
+Verify on serial that the fragment actually matched a key in the live stream before relying on it. Unknown I2C key names remain `waiting` on the dashboard rather than being fabricated.
+
 ## Outgoing actuator packets
 
 Serialize strict JSON and publish to `topic_output` with retained messages disabled.

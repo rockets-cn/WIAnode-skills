@@ -84,3 +84,14 @@ One validated K10/WIAnode case measured 49.6 Hz at the broker. Drawing every pac
 - Use gradients, rounded cards, and status colors as static styles; do not reconstruct objects per packet.
 - Preserve raw sensor values alongside normalized bars. If the hardware range is unknown, label bars as using an observed dynamic range instead of inventing a fixed full scale.
 - Keep actuator publishing independent from UI refresh. A button edge may publish one confirmed command, but screen rendering must never generate actuator traffic.
+
+## LVGL 8.3 chart notes
+
+The bundled K10 framework ships LVGL 8.3.10, where the chart API differs from newer releases:
+
+- Update a line series with `lv_chart_set_next_value(chart, series, value)`. `lv_chart_set_next_point` does not exist in 8.3.x and fails to compile; it appears only in later LVGL major versions.
+- Build a scrolling window with `LV_CHART_UPDATE_MODE_SHIFT` and a bounded point count (e.g. 64), then call `lv_chart_refresh(chart)` after feeding each value.
+- Set the Y range explicitly with `lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, 0, max)`.
+- When the sensor's hardware scale is unknown (lux, ADC, etc.), normalize before plotting: `normalized = value / observedMax * chartMax`, clamped to the chart range. This keeps the trend visible without inventing a full scale and avoids large-value overflow of the `lv_coord_t` point type.
+- Only Montserrat 14 is enabled by default, so keep chart titles short and do not design around larger built-in fonts.
+- Feed the chart from `loop()` under the LVGL mutex, never from the MQTT callback; store the latest value in the sensor state and push it on the next render pass.

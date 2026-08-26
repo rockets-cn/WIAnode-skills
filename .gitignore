@@ -1,0 +1,2 @@
+# Local WIAnode config backups may contain Wi-Fi credentials in plain text.
+.wianode-backups/

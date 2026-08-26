@@ -64,3 +64,34 @@ Report separately:
 - commands actually published and physical results still `待用户确认`.
 
 Do not claim completion from a successful compile alone. Upload and serial/MQTT verification are distinct evidence stages.
+
+## Field-tested experience
+
+The following patterns were validated with a real K10 (`unihiker_k10`, LVGL 8.3.10) driving a WIAnode with a P1 DFR0054 knob mapped to a P5 SER0053 300° servo.
+
+### Upload port identification
+
+- A connected K10 may enumerate as several USB CDC/JTAG endpoints plus a DFROBOT DFR1234 mass-storage device. The port you used last time may be gone after a replug: K10 can re-enumerate on the same cable, so re-run `pio device list` immediately before each upload instead of trusting a saved COM number.
+- To distinguish the K10 from other ESP32-S3 boards on the same machine, match the USB serial number of the candidate COM port against the DFR1234 mass-storage device's serial number (`Get-PnpDevice` / Device Manager). The K10 port is the one sharing that serial.
+- If the first upload fails with `Cannot configure port ... PermissionError`, the board may have re-enumerated; rescan ports and retry rather than changing project settings.
+
+### Continuous knob-to-servo mapping
+
+- Do not drive a continuous actuator from the same "value changed" flag that the UI renderer consumes. If `renderSensorsIfNeeded()` runs before the actuator handler in `loop()`, it clears the dirty flag first and the actuator never fires. Compute the mapped target from the sensor's current value every loop and publish only when it moved beyond the dead zone.
+- For an unknown analog range (potentiometer, joystick), map the observed dynamic range (`observedMin..observedMax`) onto the confirmed mechanical range instead of guessing a full-scale value. Show the raw value and the observed range on screen.
+- Apply a dead zone of at least 1° on the mapped output, clamp to the confirmed mechanical range, and publish only on real movement; with WIAnode's 0.02 s sending interval this yields smooth tracking at up to ~50 Hz without jitter.
+- Verify the actuator on serial first (e.g. `P5 angle published: 270 (knob)`), then ask the user to confirm physical motion. A publish log is not physical confirmation.
+
+### LVGL chart details (LVGL 8.3.10)
+
+- Use `lv_chart_set_next_value(chart, series, value)`; `lv_chart_set_next_point` does not exist in LVGL 8.3.x and fails to compile.
+- For an unknown sensor scale (e.g. a lux sensor), normalize values to a fixed chart range (`value / observedMax * 100`) so the trend stays visible without inventing a hardware full scale. Combine with `LV_CHART_UPDATE_MODE_SHIFT` for a scrolling window.
+- Only Montserrat 14 is enabled by default; keep chart labels short.
+
+### I2C sensor key discovery
+
+- I2C modules (e.g. SEN0228) are auto-detected and their MQTT key names are not guaranteed by the docs. Parse the real packet and discover keys by fragment (case-insensitive `lux` match) instead of hard-coding an unverified key. Read [references/mqtt-contract.md](references/mqtt-contract.md) before writing the parser.
+
+## Reference implementation
+
+`projects/wianode-k10-dashboard/` in this repository is a field-tested example implementing the patterns above: LVGL dashboard with a scrolling lux trend chart, P1 knob and P2 sound cards, a system status card, and confirmed P1-knob-to-P5-servo output. Copy it as a starting point; keep `include/secrets.h` out of Git (the project `.gitignore` already excludes it).
