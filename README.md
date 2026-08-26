@@ -6,13 +6,14 @@
 
 ## 中文
 
-面向 [DFRobot WIAnode](https://wiki.dfrobot.com.cn/WIAnode) 的 Codex skills 集合，覆盖设备配置、TouchDesigner 自然语言交互，以及 UNIHIKER K10 PlatformIO 开发。
+面向 [DFRobot WIAnode](https://wiki.dfrobot.com.cn/WIAnode) 的 Codex skills 集合，覆盖设备配置、TouchDesigner 自然语言交互，以及 UNIHIKER K10 的 PlatformIO 与 MicroPython 开发。
 
 | Skill | 用途 |
 | --- | --- |
 | `$wianode-config` | 引导配置设备、校验 `config.txt`、诊断网络和 MQTT |
 | `$wianode-touchdesigner` | 通过 [touchdesigner-mcp](https://github.com/8beeeaaat/touchdesigner-mcp) 用自然语言搭建、修改和排查 WIAnode 交互网络 |
 | `$wianode-k10-platformio` | 用 PlatformIO 创建、烧录和验证 UNIHIKER K10 与 WIAnode 的 MQTT 交互项目 |
+| `$wianode-k10-micropython` | 用 MicroPython 创建、上传和验证 UNIHIKER K10 与 WIAnode 的 MQTT 交互项目 |
 
 ### `$wianode-config` 主要能力
 
@@ -34,9 +35,18 @@
 - 自动构建、USB 烧录并通过串口验证 Wi-Fi、MQTT 和真实数据包。
 - 默认禁用 `topic_output`；生成或烧录执行器逻辑前展示端口、SKU、范围、速率和失效保护并单独确认。
 
+### `$wianode-k10-micropython` 主要能力
+
+- 生成 `main.py + secrets.py` 的 K10 MicroPython 项目，上传后开机自动运行。
+- 让 K10 订阅 WIAnode 传感器数据，并通过屏幕（局部刷新）、RGB、蜂鸣器或串口呈现。
+- 将 K10 按键、加速度计或光线传感器映射到 WIAnode 执行器。
+- 处理 MicroPython 固件互斥（与 Arduino 二选一）、`main.py` 自动运行规则和上传/REPL 验证。
+- 默认禁用 `topic_output`；生成或上传执行器逻辑前展示端口、SKU、范围、速率和失效保护并单独确认。
+- 注意 V0.9.2 固件中 AI 与 Wi-Fi 不能同时使用；语音合成仅存在于中文版固件。
+
 ### 安装
 
-将仓库克隆到 Codex 的本地源码目录，再把三个 skill 分别链接到个人 skills 目录。Windows PowerShell：
+将仓库克隆到 Codex 的本地源码目录，再把四个 skill 分别链接到个人 skills 目录。Windows PowerShell：
 
 ```powershell
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.codex\repos" | Out-Null
@@ -51,6 +61,9 @@ New-Item -ItemType Junction `
 New-Item -ItemType Junction `
   -Path "$env:USERPROFILE\.codex\skills\wianode-k10-platformio" `
   -Target "$env:USERPROFILE\.codex\repos\WIAnode-skills\skills\wianode-k10-platformio"
+New-Item -ItemType Junction `
+  -Path "$env:USERPROFILE\.codex\skills\wianode-k10-micropython" `
+  -Target "$env:USERPROFILE\.codex\repos\WIAnode-skills\skills\wianode-k10-micropython"
 ```
 
 macOS/Linux：
@@ -64,6 +77,8 @@ ln -s "$HOME/.codex/repos/WIAnode-skills/skills/wianode-touchdesigner" \
   "$HOME/.codex/skills/wianode-touchdesigner"
 ln -s "$HOME/.codex/repos/WIAnode-skills/skills/wianode-k10-platformio" \
   "$HOME/.codex/skills/wianode-k10-platformio"
+ln -s "$HOME/.codex/repos/WIAnode-skills/skills/wianode-k10-micropython" \
+  "$HOME/.codex/skills/wianode-k10-micropython"
 ```
 
 更新已有安装只需拉取仓库。Windows PowerShell：
@@ -78,7 +93,7 @@ macOS/Linux：
 git -C "$HOME/.codex/repos/WIAnode-skills" pull
 ```
 
-安装后检查 Codex 的 skill 列表中是否同时出现 `wianode-config`、`wianode-touchdesigner` 和 `wianode-k10-platformio`。曾按旧版说明把整个仓库克隆为 `wianode-config` 的用户，需要先保留本地改动，再迁移到上述多目录结构。
+安装后检查 Codex 的 skill 列表中是否同时出现 `wianode-config`、`wianode-touchdesigner`、`wianode-k10-platformio` 和 `wianode-k10-micropython`。曾按旧版说明把整个仓库克隆为 `wianode-config` 的用户，需要先保留本地改动，再迁移到上述多目录结构。
 
 `$wianode-touchdesigner` 还需要 TouchDesigner MCP。首次调用时，skill 可以自动下载官方组件、通过 Computer Use 把 `mcp_webserver_base.tox` 导入当前 TouchDesigner 项目的 `/project1`，并为 Codex 注册服务：
 
@@ -128,6 +143,16 @@ UNIHIKER K10 可以直接描述目标，例如：
 使用 $wianode-k10-platformio，让 K10 的 A 键控制 WIAnode P5 上的 SER0053 舵机转到 200°；生成输出固件前展示 MQTT 指令并向我确认。
 ```
 
+```text
+使用 $wianode-k10-micropython，创建一个 K10 MicroPython 项目，在屏幕上显示 WIAnode 的传感器数据，上传后检查 REPL 输出。
+```
+
+```text
+使用 $wianode-k10-micropython，让 K10 的 A 键控制 WIAnode P5 上的 SER0053 舵机转到 200°；生成上传执行器逻辑前展示 MQTT 指令并向我确认。
+```
+
+MicroPython skill 会先确认 K10 处于 MicroPython 固件（与 Arduino 互斥），上传 `main.py` 后自动运行；执行器发布同样遵循独立的确认门禁。
+
 典型流程：
 
 1. Agent 指示连接 Type-C 数据线、安装传感器并记录接口和 SKU。
@@ -152,6 +177,8 @@ UNIHIKER K10 可以直接描述目标，例如：
 | [`skills/wianode-config/scripts/validate_config.py`](skills/wianode-config/scripts/validate_config.py) | 配置编辑完成后进行只读校验 |
 
 [`skills/wianode-k10-platformio/SKILL.md`](skills/wianode-k10-platformio/SKILL.md) 是 K10 PlatformIO skill 的执行入口，按需路由到 MQTT 契约、工程流程和交互映射参考。
+
+[`skills/wianode-k10-micropython/SKILL.md`](skills/wianode-k10-micropython/SKILL.md) 是 K10 MicroPython skill 的执行入口，按需路由到 MicroPython 工程流程、MQTT 契约和交互映射参考；MicroPython API 细节遵循已安装的 `$unihiker-k10-micropython` skill。
 
 Agent 必须遵守以下约束：
 
@@ -187,6 +214,9 @@ python skills/wianode-config/scripts/validate_config.py <WIAnode盘符>:\config.
 ```text
 .
 ├── README.md
+├── projects/
+│   ├── wianode-k10-dashboard/               # PlatformIO + LVGL 实测示例
+│   └── wianode-k10-micropython-dashboard/   # MicroPython 移植版
 └── skills/
     ├── wianode-config/
     │   ├── SKILL.md
@@ -211,6 +241,18 @@ python skills/wianode-config/scripts/validate_config.py <WIAnode盘符>:\config.
     │   │   └── platformio-project.md
     │   └── tests/
     │       └── test_template.py
+    ├── wianode-k10-micropython/
+    │   ├── SKILL.md
+    │   ├── agents/
+    │   │   └── openai.yaml
+    │   ├── assets/
+    │   │   └── template/wianode-k10-micropython/
+    │   ├── references/
+    │   │   ├── interaction-patterns.md
+    │   │   ├── micropython-project.md
+    │   │   └── mqtt-contract.md
+    │   └── tests/
+    │       └── test_template.py
     └── wianode-touchdesigner/
         ├── SKILL.md
         ├── agents/
@@ -228,19 +270,20 @@ python skills/wianode-config/scripts/validate_config.py <WIAnode盘符>:\config.
 
 ### 文档依据
 
-配置字段、接口类型、传感器清单、MQTT 主题和指示灯含义整理自 [DFRobot WIAnode 官方 Wiki](https://wiki.dfrobot.com.cn/WIAnode)。K10 PlatformIO 环境基于 [DFRobot/platform-unihiker](https://github.com/DFRobot/platform-unihiker)，MQTT 和 JSON 模板分别使用 [PubSubClient](https://github.com/knolleary/pubsubclient) 与 [ArduinoJson](https://github.com/bblanchon/ArduinoJson)。
+配置字段、接口类型、传感器清单、MQTT 主题和指示灯含义整理自 [DFRobot WIAnode 官方 Wiki](https://wiki.dfrobot.com.cn/WIAnode)。K10 PlatformIO 环境基于 [DFRobot/platform-unihiker](https://github.com/DFRobot/platform-unihiker)，MQTT 和 JSON 模板分别使用 [PubSubClient](https://github.com/knolleary/pubsubclient) 与 [ArduinoJson](https://github.com/bblanchon/ArduinoJson)。K10 MicroPython 项目使用固件内置的 `k10_base.WiFi` / `k10_base.MqttClient` 和 `unihiker_k10` 屏幕 API。
 
 <a id="english"></a>
 
 ## English
 
-A collection of Codex skills for [DFRobot WIAnode](https://wiki.dfrobot.com.cn/WIAnode), covering device configuration, natural-language TouchDesigner workflows, and UNIHIKER K10 PlatformIO development.
+A collection of Codex skills for [DFRobot WIAnode](https://wiki.dfrobot.com.cn/WIAnode), covering device configuration, natural-language TouchDesigner workflows, and UNIHIKER K10 PlatformIO and MicroPython development.
 
 | Skill | Purpose |
 | --- | --- |
 | `$wianode-config` | Guide device setup, validate `config.txt`, and diagnose network or MQTT issues |
 | `$wianode-touchdesigner` | Use [touchdesigner-mcp](https://github.com/8beeeaaat/touchdesigner-mcp) to build, modify, and troubleshoot WIAnode interactions from natural-language requests |
 | `$wianode-k10-platformio` | Create, flash, and verify UNIHIKER K10 PlatformIO projects that interact with WIAnode over MQTT |
+| `$wianode-k10-micropython` | Create, upload, and verify UNIHIKER K10 MicroPython projects that interact with WIAnode over MQTT |
 
 ### `$wianode-config` capabilities
 
@@ -262,6 +305,15 @@ This project does not develop WIAnode firmware, and a general request to configu
 - Builds, uploads over USB, and verifies Wi-Fi, MQTT, and real packets through serial monitoring.
 - Disables `topic_output` by default and requires a separate preview and confirmation of the port, SKU, range, publish rate, and fail-safe before output-capable firmware is generated or uploaded.
 
+### `$wianode-k10-micropython` capabilities
+
+- Generates a K10 MicroPython project with `main.py` and `secrets.py`; `main.py` auto-runs after upload and reset.
+- Subscribes to WIAnode sensor data and presents it through the K10 screen (partial redraws), RGB LEDs, buzzer, or REPL output.
+- Maps K10 buttons, accelerometer, or light sensor to WIAnode actuators.
+- Handles MicroPython firmware exclusivity (cannot coexist with Arduino), the `main.py` auto-run rule, and upload/REPL verification.
+- Disables `topic_output` by default and requires a separate preview and confirmation of the port, SKU, range, publish rate, and fail-safe before output-capable firmware is generated or uploaded.
+- Notes that V0.9.2 firmware cannot run AI and Wi-Fi together, and that TTS exists only in the Chinese firmware.
+
 ### Installation
 
 Clone the repository into a local Codex source directory, then link each skill into the personal skills directory.
@@ -281,6 +333,9 @@ New-Item -ItemType Junction `
 New-Item -ItemType Junction `
   -Path "$env:USERPROFILE\.codex\skills\wianode-k10-platformio" `
   -Target "$env:USERPROFILE\.codex\repos\WIAnode-skills\skills\wianode-k10-platformio"
+New-Item -ItemType Junction `
+  -Path "$env:USERPROFILE\.codex\skills\wianode-k10-micropython" `
+  -Target "$env:USERPROFILE\.codex\repos\WIAnode-skills\skills\wianode-k10-micropython"
 ```
 
 macOS/Linux:
@@ -294,6 +349,8 @@ ln -s "$HOME/.codex/repos/WIAnode-skills/skills/wianode-touchdesigner" \
   "$HOME/.codex/skills/wianode-touchdesigner"
 ln -s "$HOME/.codex/repos/WIAnode-skills/skills/wianode-k10-platformio" \
   "$HOME/.codex/skills/wianode-k10-platformio"
+ln -s "$HOME/.codex/repos/WIAnode-skills/skills/wianode-k10-micropython" \
+  "$HOME/.codex/skills/wianode-k10-micropython"
 ```
 
 To update on Windows:
@@ -308,7 +365,7 @@ To update on macOS/Linux:
 git -C "$HOME/.codex/repos/WIAnode-skills" pull
 ```
 
-After installation, confirm that `wianode-config`, `wianode-touchdesigner`, and `wianode-k10-platformio` appear in the Codex skill list. Users who previously cloned the whole repository directly as `wianode-config` should preserve any local changes and migrate to the multi-directory layout above.
+After installation, confirm that `wianode-config`, `wianode-touchdesigner`, `wianode-k10-platformio`, and `wianode-k10-micropython` appear in the Codex skill list. Users who previously cloned the whole repository directly as `wianode-config` should preserve any local changes and migrate to the multi-directory layout above.
 
 `$wianode-touchdesigner` also requires TouchDesigner MCP. On first use, the skill can download the official component, use Computer Use to import `mcp_webserver_base.tox` into `/project1` in the current TouchDesigner project, and register the MCP server with Codex:
 
@@ -358,6 +415,16 @@ Use $wianode-k10-platformio to create a K10 project that displays WIAnode temper
 Use $wianode-k10-platformio to make K10 button A move the SER0053 servo on WIAnode P5 to 200 degrees. Show me the MQTT command and ask before generating output-enabled firmware.
 ```
 
+```text
+Use $wianode-k10-micropython to create a K10 MicroPython project that displays WIAnode sensor data on screen, uploads it, and checks the REPL output.
+```
+
+```text
+Use $wianode-k10-micropython to make K10 button A move the SER0053 servo on WIAnode P5 to 200 degrees. Show me the MQTT command and ask before generating output-enabled firmware.
+```
+
+The MicroPython skill first confirms that the K10 runs MicroPython firmware (it cannot coexist with Arduino), uploads `main.py` so it auto-runs on boot, and applies the same separate confirmation gate before any actuator publishing.
+
 The guided configuration flow is:
 
 1. Connect WIAnode with a Type-C data cable, attach the modules, and record each port and SKU.
@@ -382,6 +449,8 @@ Every interface table in the report includes an SKU column. Unknown models remai
 | [`skills/wianode-config/scripts/validate_config.py`](skills/wianode-config/scripts/validate_config.py) | Running the read-only configuration validator |
 
 [`skills/wianode-k10-platformio/SKILL.md`](skills/wianode-k10-platformio/SKILL.md) is the K10 PlatformIO skill entry point and routes to the MQTT contract, project workflow, and interaction mapping references as needed.
+
+[`skills/wianode-k10-micropython/SKILL.md`](skills/wianode-k10-micropython/SKILL.md) is the K10 MicroPython skill entry point and routes to the MicroPython project workflow, MQTT contract, and interaction mapping references as needed; MicroPython API details follow the installed `$unihiker-k10-micropython` skill.
 
 Agents must follow these constraints:
 
@@ -418,6 +487,9 @@ The validator never displays the Wi-Fi password value. It returns exit code `0` 
 ```text
 .
 ├── README.md
+├── projects/
+│   ├── wianode-k10-dashboard/               # Field-tested PlatformIO + LVGL example
+│   └── wianode-k10-micropython-dashboard/   # MicroPython port
 └── skills/
     ├── wianode-config/
     │   ├── SKILL.md
@@ -442,6 +514,18 @@ The validator never displays the Wi-Fi password value. It returns exit code `0` 
     │   │   └── platformio-project.md
     │   └── tests/
     │       └── test_template.py
+    ├── wianode-k10-micropython/
+    │   ├── SKILL.md
+    │   ├── agents/
+    │   │   └── openai.yaml
+    │   ├── assets/
+    │   │   └── template/wianode-k10-micropython/
+    │   ├── references/
+    │   │   ├── interaction-patterns.md
+    │   │   ├── micropython-project.md
+    │   │   └── mqtt-contract.md
+    │   └── tests/
+    │       └── test_template.py
     └── wianode-touchdesigner/
         ├── SKILL.md
         ├── agents/
@@ -459,4 +543,4 @@ The validator never displays the Wi-Fi password value. It returns exit code `0` 
 
 ### Documentation sources
 
-Configuration fields, interface types, supported sensors, MQTT topics, and indicator meanings are based on the [official DFRobot WIAnode Wiki](https://wiki.dfrobot.com.cn/WIAnode). The K10 PlatformIO environment follows [DFRobot/platform-unihiker](https://github.com/DFRobot/platform-unihiker); the MQTT and JSON templates use [PubSubClient](https://github.com/knolleary/pubsubclient) and [ArduinoJson](https://github.com/bblanchon/ArduinoJson).
+Configuration fields, interface types, supported sensors, MQTT topics, and indicator meanings are based on the [official DFRobot WIAnode Wiki](https://wiki.dfrobot.com.cn/WIAnode). The K10 PlatformIO environment follows [DFRobot/platform-unihiker](https://github.com/DFRobot/platform-unihiker); the MQTT and JSON templates use [PubSubClient](https://github.com/knolleary/pubsubclient) and [ArduinoJson](https://github.com/bblanchon/ArduinoJson). The K10 MicroPython project uses the firmware's built-in `k10_base.WiFi` / `k10_base.MqttClient` and the `unihiker_k10` screen API.
