@@ -15,6 +15,11 @@
 | `$wianode-k10-platformio` | 用 PlatformIO 创建、烧录和验证 UNIHIKER K10 与 WIAnode 的 MQTT 交互项目 |
 | `$wianode-k10-micropython` | 用 MicroPython 创建、上传和验证 UNIHIKER K10 与 WIAnode 的 MQTT 交互项目 |
 
+> ⚠️ **实机测试状态**
+>
+> - `$wianode-k10-micropython`：**尚未与真实 WIAnode 设备完成实机联调验证**。2026-08 已在真实 K10（MicroPython 1.26 / 固件 v0.9.2）上验证了与本机 MQTT broker 的双向收发；但 WIAnode 特有的 MQTT 行为（双连接规则、QoS、按 client_id 的会话状态等）、传感器/执行器实测，以及固件版本间的兼容性，仍需在真实 WIAnode 上确认。相关内容仅供参考。
+> - `$wianode-touchdesigner`：**未经实机测试**，尚未在真实 TouchDesigner 环境中验证 `mcp_webserver_base.tox` 导入、MCP 注册与自然语言建网流程。
+
 ### `$wianode-config` 主要能力
 
 - 用户只说“我要配置 WIAnode”时，主动给出连接设备、安装模块和确认 SKU 的指示。
@@ -284,6 +289,11 @@ A collection of Codex skills for [DFRobot WIAnode](https://wiki.dfrobot.com.cn/W
 | `$wianode-touchdesigner` | Use [touchdesigner-mcp](https://github.com/8beeeaaat/touchdesigner-mcp) to build, modify, and troubleshoot WIAnode interactions from natural-language requests |
 | `$wianode-k10-platformio` | Create, flash, and verify UNIHIKER K10 PlatformIO projects that interact with WIAnode over MQTT |
 | `$wianode-k10-micropython` | Create, upload, and verify UNIHIKER K10 MicroPython projects that interact with WIAnode over MQTT |
+
+> ⚠️ **Hardware test status**
+>
+> - `$wianode-k10-micropython`: **not yet validated end-to-end with a real WIAnode device.** In 2026-08, the K10 side (MicroPython 1.26 / firmware v0.9.2) was verified against a local MQTT broker with bidirectional data flow; however, WIAnode-specific MQTT behavior (the two-connection rule, QoS handling, per-client session state), sensor/actuator tests, and cross-firmware compatibility still need confirmation on a real WIAnode. Treat the content as reference only.
+> - `$wianode-touchdesigner`: **not field-tested.** The `mcp_webserver_base.tox` import, MCP registration, and natural-language network-building flow have not been verified in a real TouchDesigner environment.
 
 ### `$wianode-config` capabilities
 
