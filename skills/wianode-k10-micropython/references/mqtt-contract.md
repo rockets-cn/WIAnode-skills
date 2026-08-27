@@ -74,11 +74,11 @@ WIAnode publishes a JSON object whose keys describe port, sensor type, and measu
 {"p1_input_val":1,"p2_dht11_temp":23,"p2_dht11_humi":88}
 ```
 
-Parse with the firmware's `ujson` and reject malformed or non-object payloads:
+Parse with the firmware's `json` module and reject malformed or non-object payloads. The v0.9.2 firmware is built on MicroPython ≥1.21, where the JSON module was renamed from `ujson` to `json` with no alias; `import ujson` raises `ImportError`. Use `json` only:
 
 ```python
 try:
-    values = ujson.loads(msg)
+    values = json.loads(msg)
 except ValueError:
     print("MQTT JSON rejected")
     return

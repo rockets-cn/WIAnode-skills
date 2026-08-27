@@ -79,6 +79,14 @@ class WianodeK10MicropythonTemplateTests(unittest.TestCase):
         self.assertIn("mqtt_out.publish(b\"topic_output\"", helper)
         self.assertIn("qos=0", helper)
 
+    def test_json_module_is_json_not_ujson(self) -> None:
+        # K10 v0.9.2 firmware is MicroPython >= 1.21, which renamed ujson to
+        # json and kept no alias; import ujson raises ImportError at boot.
+        source = (TEMPLATE / "main.py").read_text(encoding="utf-8")
+        self.assertIn("import json", source)
+        self.assertNotIn("import ujson", source)
+        self.assertNotIn("ujson.", source)
+
     def test_servo_dead_zone_above_knob_quantum(self) -> None:
         source = (TEMPLATE / "main.py").read_text(encoding="utf-8")
         self.assertIn("SERVO_DEADZONE_DEG = 3", source)

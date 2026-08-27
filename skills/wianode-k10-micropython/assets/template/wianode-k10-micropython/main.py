@@ -13,9 +13,9 @@
 # secrets.py and fill in real values before uploading, then reset the board.
 
 import binascii
+import json
 import machine
 import time
-import ujson
 
 from k10_base import WiFi
 from umqtt.simple import MQTTClient
@@ -180,7 +180,7 @@ def on_input(topic, msg):
     """MQTT callback (umqtt.simple signature): parse and flag; never render."""
     global latest_values, values_received, rx_count
     try:
-        values = ujson.loads(msg)
+        values = json.loads(msg)
     except ValueError:
         print("MQTT JSON rejected")
         return
@@ -231,7 +231,7 @@ def log_status_if_needed(now):
 
 
 def compact_json(payload_dict):
-    # ujson.dumps emits {"p5": "270"} (spaced); the WIAnode output path was
+    # json.dumps emits {"p5": "270"} (spaced); the WIAnode output path was
     # field-tested with compact {"p5":"270"}, so build it without spaces.
     parts = ['"%s":"%s"' % (key, payload_dict[key]) for key in payload_dict]
     return "{" + ",".join(parts) + "}"

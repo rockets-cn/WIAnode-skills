@@ -52,6 +52,7 @@ Press `RST` on the board (or use `mpremote reset`) after uploading so `main.py` 
 ## Runtime invariants
 
 - Keep the main loop non-blocking: small `time.sleep_ms(...)` values, bounded Wi-Fi/MQTT reconnect intervals, and no tight reconnect loops.
+- Use `import json` for parsing. The v0.9.2 firmware ships MicroPython ≥1.21, which renamed the JSON module `ujson` → `json` without keeping the alias; `import ujson` fails at boot with `ImportError`.
 - Do not render from the MQTT callback. Set a dirty flag with the parsed values; the main loop performs the partial redraw.
 - Initialize the screen background once. Erase and redraw only changed rows or regions, then call `screen.show_draw()` once per visible change. Do not call `screen.clear()` or full-screen `screen.show_bg()` in the loop—it causes visible flicker.
 - Use the field-tested MQTT design in the template: `umqtt.simple.MQTTClient` directly (NOT `k10_base.MqttClient`), two connections (`k10i-*` subscribes `topic_input`, `k10o-*` publishes and never subscribes), `check_msg()` drained from the main loop with idle-timeout errnos (11/116) treated as normal, and QoS 0 compact payloads. Re-subscribe on the input connection after every reconnect.

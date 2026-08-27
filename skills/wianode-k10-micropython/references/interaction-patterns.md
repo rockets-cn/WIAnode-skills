@@ -6,7 +6,7 @@ Read this reference when mapping K10 inputs/outputs to WIAnode data or actuators
 
 | Request | Mapping |
 | --- | --- |
-| Show a WIAnode sensor on K10 | observed MQTT key → `ujson` value → erased row region → partial redraw |
+| Show a WIAnode sensor on K10 | observed MQTT key → `json` value → erased row region → partial redraw |
 | Use a button as a K10 indicator | `pN_input_val` → threshold 0/1 → K10 RGB or screen state |
 | Alarm on temperature/distance | observed key → validated numeric value → threshold/hysteresis → K10 buzzer/RGB |
 | Visualize movement | accelerometer/distance key → clamp/normalize → small screen region or indicator |

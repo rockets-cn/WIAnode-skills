@@ -26,6 +26,10 @@ class WianodeK10MicropythonDashboardTests(unittest.TestCase):
         self.assertIn("from umqtt.simple import MQTTClient", source)
         self.assertIn("from unihiker_k10 import screen", source)
         self.assertIn("from secrets import", source)
+        # K10 v0.9.2 firmware is MicroPython >= 1.21: json, not ujson.
+        self.assertIn("import json", source)
+        self.assertNotIn("import ujson", source)
+        self.assertNotIn("ujson.", source)
         self.assertIn('mqtt_in.subscribe(b"topic_input")', source)
         self.assertIn("mqtt_in.set_callback(on_input)", source)
         self.assertIn("board_id = binascii.hexlify(", source)
