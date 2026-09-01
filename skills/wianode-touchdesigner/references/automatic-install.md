@@ -34,11 +34,12 @@ The import cannot use TouchDesigner MCP because its WebServer component is not r
 
 1. Inspect the current TouchDesigner application state. Launch TouchDesigner only when no instance is running.
 2. Confirm the intended project is open and navigate the active Network Editor to `/project1`. Do not create a new project when the user has an existing target project.
-3. Inspect the network for `mcp_webserver_base`. If a matching component already exists, skip import.
+3. Inspect the network for `mcp_webserver_base`. Also probe `http://127.0.0.1:9981/api/td/server/td` before importing: a healthy component may be off-screen even when it is not visible in the current Network Editor. If a matching component or verified endpoint already exists, inspect and reuse it instead of importing.
 4. Open `File → Import File…`. In the native file picker, enter the absolute `tox_path` from the helper output and choose the file. Prefer the file dialog over double-clicking the `.tox`; double-clicking starts a separate TouchDesigner process instead of importing into the current network.
 5. After every UI action, fetch fresh application state before choosing the next control. Do not reuse stale accessibility element indexes.
-6. If an overwrite/name-collision dialog appears, cancel and inspect the existing component. Do not create `mcp_webserver_base1` as an unnoticed duplicate.
-7. Verify that `/project1/mcp_webserver_base` is visible in the current Network Editor. Open Textport (`Alt+T` or `Dialogs → Textport`) only if the node does not appear healthy or the HTTP check below fails.
+6. If an overwrite/name-collision dialog appears, cancel and inspect the existing component. TouchDesigner can also silently suffix the import without a dialog, so do not assume the absence of a prompt means there was no collision.
+7. Re-enumerate every `/project1/mcp_webserver_base*` component after import. Compare port, source `.tox`, and errors. If the original is healthy and the suffixed component was created by this operation, remove only that new duplicate; otherwise stop and report the conflict.
+8. Verify that the retained `/project1/mcp_webserver_base` is visible or reachable. Open Textport (`Alt+T` or `Dialogs → Textport`) only if the component does not appear healthy or the HTTP check below fails.
 
 If Computer Use is unavailable or the TouchDesigner Network Editor is inaccessible, give the user the exact `tox_path` and ask them to drag that file into `/project1`. Record the import as incomplete; do not continue with live MCP claims.
 
@@ -75,3 +76,5 @@ Codex stores MCP configuration in `~/.codex/config.toml` by default. The user mu
 - HTTP API reachable on loopback;
 - Codex MCP entry added or reused;
 - post-restart MCP tools verified or still pending restart.
+
+The current host does not dynamically gain newly registered MCP tools. If the user already authorized live edits and the verified loopback endpoint is needed to finish an in-progress repair before restart, follow the bounded restart-gap bridge in [field-tested-workflow.md](field-tested-workflow.md); do not present it as a substitute for the restart.

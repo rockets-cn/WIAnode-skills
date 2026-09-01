@@ -18,7 +18,7 @@
 > ⚠️ **实机测试状态**
 >
 > - `$wianode-k10-micropython`：**尚未与真实 WIAnode 设备完成实机联调验证**。2026-08 已在真实 K10（MicroPython 1.26 / 固件 v0.9.2）上验证了与本机 MQTT broker 的双向收发；但 WIAnode 特有的 MQTT 行为（双连接规则、QoS、按 client_id 的会话状态等）、传感器/执行器实测，以及固件版本间的兼容性，仍需在真实 WIAnode 上确认。相关内容仅供参考。
-> - `$wianode-touchdesigner`：**未经实机测试**，尚未在真实 TouchDesigner 环境中验证 `mcp_webserver_base.tox` 导入、MCP 注册与自然语言建网流程。
+> - `$wianode-touchdesigner`：**已完成实机验证**。2026-09 在 Windows、TouchDesigner `2025.33070`、touchdesigner-mcp `v2.0.0` 与真实 WIAnode 上验证了组件导入、回环 API、MCP 注册、现有项目修复、P1 旋钮精确控制 `0–300` 粒子，以及 P5 `SER0053` (`servo300`) 在确认的 `30–270°` 行程内随粒子数量连续运动。其他 TouchDesigner/固件版本与机械结构仍需重新确认参数。
 
 ### `$wianode-config` 主要能力
 
@@ -31,6 +31,14 @@
 - 支持 MQTT 连接与 `topic_input`、`topic_output` 数据格式排查。
 
 本项目不负责 WIAnode 固件开发，也不会把“我要配置”视为写盘授权。
+
+### `$wianode-touchdesigner` 主要能力
+
+- 检查并复用现有 TouchDesigner 网络、WIAnode 数据桥和 MQTT 节点，识别 `mcp_webserver_base1` 等静默重名组件。
+- 自动准备官方 TouchDesigner MCP 组件、导入当前项目并注册 Codex；注册后的当前 Codex 进程仍需重启才能获得 MCP tools。
+- 用可检查的 CHOP/POP/TOP 数据流映射真实传感器值；需要精确数量时使用显式点数，而不是把 Particle SOP 出生率误当作当前粒子数。
+- 对视觉映射做端点/中间值和输出画面验证，并检查整个节点树错误。
+- 真实执行器采用“单次指令确认 → 物理确认 → 连续输出授权”的流程；支持范围限制、平滑、死区、发送间隔、双层输出锁和明确停止方法。
 
 ### `$wianode-k10-platformio` 主要能力
 
@@ -106,7 +114,7 @@ git -C "$HOME/.codex/repos/WIAnode-skills" pull
 codex mcp add touchdesigner -- npx -y touchdesigner-mcp-server@latest --stdio
 ```
 
-如果当前环境无法控制 TouchDesigner UI，skill 会返回已校验的 `.tox` 绝对路径，只保留一次拖入 `/project1` 的手动步骤。完成注册后仍需重启 Codex，并保持 TouchDesigner 与 `mcp_webserver_base` 运行。
+如果当前环境无法控制 TouchDesigner UI，skill 会返回已校验的 `.tox` 绝对路径，只保留一次拖入 `/project1` 的手动步骤。完成注册后仍需重启 Codex，并保持 TouchDesigner 与 `mcp_webserver_base` 运行。实测中已有组件可能位于画布外，重复导入还可能无提示地生成 `mcp_webserver_base1`；新版 skill 会先探测 `127.0.0.1:9981`，并在导入后重新枚举同名前缀组件。
 
 ### 使用
 
@@ -136,7 +144,13 @@ TouchDesigner 中可以直接描述目标，例如：
 使用 $wianode-touchdesigner，让 P5 上的 SER0053 舵机转到 200°；发送前先向我展示 MQTT 指令并确认。
 ```
 
+```text
+使用 $wianode-touchdesigner，让 P1 旋钮精确控制 0–300 个粒子，再让 P5 的 SER0053 像秤的指针一样随粒子数量在 30–270° 之间运动；先锁定输出并验证画面，单次测试和连续输出分别向我确认。
+```
+
 TouchDesigner skill 会先检查当前项目与 MQTT 连接，优先复用已有节点；传感器读取可直接构建，向 `topic_output` 发送真实执行器指令前则必须单独确认。
+
+实测经验：Particle SOP 的出生率不是精确粒子数量；TouchDesigner 保存可能生成 `.1.toe`、`.2.toe` 并弹出覆盖窗口；发布请求若在返回前断开，指令可能已经生效，不能盲目重发。这些恢复与验证步骤已整理进 [field-tested-workflow.md](skills/wianode-touchdesigner/references/field-tested-workflow.md)。
 
 UNIHIKER K10 可以直接描述目标，例如：
 
@@ -293,7 +307,7 @@ A collection of Codex skills for [DFRobot WIAnode](https://wiki.dfrobot.com.cn/W
 > ⚠️ **Hardware test status**
 >
 > - `$wianode-k10-micropython`: **not yet validated end-to-end with a real WIAnode device.** In 2026-08, the K10 side (MicroPython 1.26 / firmware v0.9.2) was verified against a local MQTT broker with bidirectional data flow; however, WIAnode-specific MQTT behavior (the two-connection rule, QoS handling, per-client session state), sensor/actuator tests, and cross-firmware compatibility still need confirmation on a real WIAnode. Treat the content as reference only.
-> - `$wianode-touchdesigner`: **not field-tested.** The `mcp_webserver_base.tox` import, MCP registration, and natural-language network-building flow have not been verified in a real TouchDesigner environment.
+> - `$wianode-touchdesigner`: **field-tested in a real project.** In 2026-09, Windows, TouchDesigner `2025.33070`, touchdesigner-mcp `v2.0.0`, and a real WIAnode were used to verify component import, the loopback API, MCP registration, repair of an existing project, exact P1-driven `0–300` particle counts, and continuous P5 `SER0053` (`servo300`) motion over a confirmed `30–270°` mechanical range. Reconfirm parameters for other TouchDesigner/firmware versions and mechanisms.
 
 ### `$wianode-config` capabilities
 
@@ -306,6 +320,14 @@ A collection of Codex skills for [DFRobot WIAnode](https://wiki.dfrobot.com.cn/W
 - Diagnoses MQTT connections and the `topic_input` / `topic_output` payload formats.
 
 This project does not develop WIAnode firmware, and a general request to configure the device is not treated as permission to write to it.
+
+### `$wianode-touchdesigner` capabilities
+
+- Inspects and reuses existing TouchDesigner networks, WIAnode data bridges, and MQTT nodes, including detection of silently suffixed components such as `mcp_webserver_base1`.
+- Prepares and imports the official TouchDesigner MCP component and registers it with Codex; the current Codex host still needs a restart before newly registered MCP tools appear.
+- Builds inspectable CHOP/POP/TOP mappings from observed sensor values, using explicit point populations instead of treating Particle SOP birth rate as an exact current count.
+- Verifies visual mappings at endpoints/interior values, inspects output images, and checks the complete node tree for errors.
+- Uses a staged actuator flow—single-command confirmation, physical confirmation, then continuous-output authorization—with clamps, smoothing, dead zones, publish intervals, dual interlocks, and an explicit stop method.
 
 ### `$wianode-k10-platformio` capabilities
 
@@ -383,7 +405,7 @@ After installation, confirm that `wianode-config`, `wianode-touchdesigner`, `wia
 codex mcp add touchdesigner -- npx -y touchdesigner-mcp-server@latest --stdio
 ```
 
-If TouchDesigner UI control is unavailable, the skill returns a validated absolute path to the `.tox` file, leaving only the drag-and-drop into `/project1` as a manual step. Restart Codex after registration, and keep TouchDesigner and `mcp_webserver_base` running.
+If TouchDesigner UI control is unavailable, the skill returns a validated absolute path to the `.tox` file, leaving only the drag-and-drop into `/project1` as a manual step. Restart Codex after registration, and keep TouchDesigner and `mcp_webserver_base` running. A healthy existing component can be off-screen, and importing again may silently create `mcp_webserver_base1`; the updated skill probes `127.0.0.1:9981` first and re-enumerates matching components after import.
 
 ### Usage
 
@@ -413,7 +435,13 @@ Use $wianode-touchdesigner to map the X axis of the SEN0224 accelerometer to cub
 Use $wianode-touchdesigner to move the SER0053 servo on P5 to 200 degrees. Show me the MQTT command and ask for confirmation before sending it.
 ```
 
+```text
+Use $wianode-touchdesigner to make the P1 knob control exactly 0–300 particles, then drive the P5 SER0053 like a scale pointer over 30–270 degrees. Keep output locked while verifying the visuals, and ask separately before the single test and continuous output.
+```
+
 The TouchDesigner skill inspects the current project and MQTT connection before editing, and reuses existing nodes where possible. Sensor-driven networks may be built directly; publishing a real actuator command to `topic_output` always requires a separate confirmation.
+
+Field-tested lessons: Particle SOP birth rate is not an exact population control; TouchDesigner saves may create `.1.toe` / `.2.toe` siblings and block on an overwrite modal; and a publish request that loses its response may already have moved the device, so it must not be retried blindly. The recovery and verification workflow is documented in [field-tested-workflow.md](skills/wianode-touchdesigner/references/field-tested-workflow.md).
 
 Describe a UNIHIKER K10 project directly:
 

@@ -34,10 +34,17 @@ An explicit request to install or configure TouchDesigner MCP authorizes downloa
 
 Use read tools before mutation tools. Query actual node parameters instead of guessing parameter names across TouchDesigner versions. Prefer several small operations over one opaque project-wide script.
 
+## Current-host restart gap
+
+Registering the stdio entry does not add new tools to the already-running Codex host. Restart remains required. When the loopback WebServer is already verified, the user authorized live-project edits, and an in-progress repair should be completed before restart, the bounded `/api/td/server/exec` bridge in [field-tested-workflow.md](field-tested-workflow.md) may be used temporarily.
+
+Keep temporary scripts read-first and small. Return lists of record dictionaries for structured collections; touchdesigner-mcp `v2.0.0` on TouchDesigner `2025.33070` could mis-serialize nested dictionaries as unrelated operator descriptions. Never include credentials or broad project dumps in the result.
+
 ## Connection diagnosis
 
 - `ECONNREFUSED`: start TouchDesigner, ensure the imported WebServer DAT is active, and verify port `9981`.
 - Timeout: inspect the WebServer DAT, firewall, and host configuration; then retry once after the condition changes.
+- Timeout immediately after a save: inspect the TouchDesigner window for an overwrite modal. Do not keep retrying the API while the UI is blocked.
 - Host lookup error: use `127.0.0.1` unless the WebServer is intentionally remote.
 - API compatibility error: update both the npm MCP server and the `.tox` component from the same current release. The project documents API compatibility separately from the npm package version.
 - The MCP client caches a failed TouchDesigner connection briefly. After fixing the underlying issue, wait for the retry window or restart the MCP client instead of repeatedly issuing mutations.
@@ -45,3 +52,5 @@ Use read tools before mutation tools. Query actual node parameters instead of gu
 ## Evidence before completion
 
 A successful MCP response proves only that TouchDesigner accepted the operation. Verify the requested outcome with node parameters, `get_td_node_errors`, and—when relevant—`get_top_image`. It does not prove that a physical WIAnode actuator moved.
+
+TouchDesigner `2025.33070` uses `project.save(...)`; `project.saveAs(...)` is unavailable. Preflight the destination because saves may create numbered siblings and an overwrite prompt can block the WebServer request. Re-read the actual project name and filesystem result after saving.

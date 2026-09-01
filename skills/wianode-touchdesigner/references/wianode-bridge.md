@@ -90,6 +90,12 @@ def onMessage(dat, topic, payload, qos, retained, dup):
 
 Use the MCP server's `execute_python_script` only to set the Text DAT contents or perform connection operations that cannot be expressed through node parameters. Return paths and connection state, not credentials or full project dumps.
 
+## Existing external bridges
+
+Some existing projects use a separate local process to subscribe to WIAnode and push the latest values into `sensor_values` through the TouchDesigner loopback API. Reuse such a bridge only after inspecting its directionality and active state. Keep sensor input independent from actuator output, default hardware output to disabled, and disable any bridge-level automatic sensor-follow when TouchDesigner owns the mapping.
+
+For continuous actuators, require both a bridge-level output flag and a TouchDesigner CHOP Execute DAT interlock. A loopback HTTP endpoint should bind only to `127.0.0.1`, clamp again at the bridge boundary, publish with QoS 0 and retain false, and return a bounded result without credentials.
+
 ## Sensor packets
 
 WIAnode publishes a JSON object whose keys encode port, device type, and measurement, for example:
@@ -123,3 +129,5 @@ result = {'topic': 'topic_output', 'payload': command}
 ```
 
 This script is an execution template, not standing authorization. Apply the hardware-output confirmation gate in `SKILL.md` immediately before sending it.
+
+If the client connection closes before a publish response is received, the command may already have reached the broker or device. Mark the result uncertain and do not retry automatically. Inspect bridge state and ask for physical confirmation.
