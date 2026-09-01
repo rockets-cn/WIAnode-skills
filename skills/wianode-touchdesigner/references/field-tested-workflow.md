@@ -1,15 +1,14 @@
 # Field-tested TouchDesigner workflow
 
-Read this reference when repairing an existing project, bootstrapping immediately after MCP registration, handling duplicate WebServer components or save prompts, or building an exact particle-count-to-servo interaction. These observations were validated on Windows with TouchDesigner `2025.33070`, touchdesigner-mcp `v2.0.0`, and a real WIAnode on 2026-09-01. Re-check version-sensitive details elsewhere.
+Read this reference when repairing an existing project, bootstrapping immediately after MCP registration, handling duplicate WebServer components or save prompts, or building an exact particle-count interaction. These project-specific observations were validated on Windows with TouchDesigner `2025.33070`, touchdesigner-mcp `v2.0.0`, and a real WIAnode on 2026-09-01. They are not a specification for DFRobot's plugin; re-derive every WIAnode-facing path from `WIAnode_plugin_10828.tox` or the matching official example.
 
 ## What was verified
 
-- The official component bundle was prepared, imported, and reachable at `http://127.0.0.1:9981`.
+- The touchdesigner-mcp automation bundle was prepared, imported, and reachable at `http://127.0.0.1:9981`.
 - The Codex stdio entry was registered successfully; the current Codex host still required restart before MCP tools appeared.
 - An existing `/project1` network was inspected and repaired through the verified loopback API during that restart gap.
-- A normalized P1 rotary value drove an exact `0..300` particle count.
-- Particle count drove a confirmed P5 `SER0053` in `servo300` mode over a user-confirmed mechanical range of `30..270` degrees.
-- A single `{"p5":"150"}` test physically moved the servo; continuous output was armed only after the user confirmed that movement.
+- A normalized rotary value drove an exact `0..300` project-specific particle count.
+- A project-specific particle mapping drove a confirmed servo over a user-confirmed mechanical range, but this historical path must not be reused as DFRobot plugin evidence.
 
 ## Bootstrap without creating a duplicate
 
@@ -37,8 +36,8 @@ This bridge is not a replacement for restarting Codex and using the MCP tools on
 A Particle SOP `birth` expression is not an exact count controller: birth rate, lifetime, frame rate, and internal limits can make most of the sensor range saturate at the same population. For a requested quantity, use an explicit population stage:
 
 ```text
-sensor_values[p1_input_val]
-→ Constant CHOP expression
+observed output from the loaded DFRobot plugin/example
+→ Select/Constant CHOP as appropriate
 → Filter CHOP + clamp 0..1
 → Script POP creates round(value * 300) points
 → Copy POP copies the visible particle to those points
@@ -48,19 +47,19 @@ Keep point positions deterministic when only the population should change. Verif
 
 ## Actuator arming sequence
 
-Use two independent interlocks for continuous physical output when an external bridge is involved:
+Use two independent interlocks for continuous physical output through the official plugin:
 
-1. Keep the bridge's hardware-output flag off and automatic sensor-follow disabled.
-2. Keep the TouchDesigner CHOP Execute DAT inactive and its stored `confirmed` / `output_enabled` flags false.
+1. Keep the final official-plugin-driving connection or execute node inactive.
+2. Keep the project-specific control DAT/CHOP inactive and its stored confirmation flag false.
 3. Build and verify only the preview mapping.
-4. Preview one exact payload and obtain confirmation.
-5. Send one bounded command with QoS 0 and retain false.
-6. Confirm broker acceptance separately from physical motion.
+4. Inspect the matching DFRobot example, preview the exact official-plugin parameter/value or operation, and obtain confirmation.
+5. Apply one bounded operation through that verified official-plugin path.
+6. Confirm TouchDesigner/plugin acceptance separately from physical motion.
 7. Arm continuous output only after the user confirms the physical response and the continuous range, dead zone/rate limit, and stop method.
 
-For the validated P5 `SER0053` balance-scale interaction, particles `0..300` mapped to `30..270` degrees with a `3°` dead zone and a minimum `0.12 s` publish interval. These are a field-tested example, not defaults for another servo or mechanism.
+For one validated balance-scale interaction, particles `0..300` mapped to a user-confirmed `30..270` degree range with a `3°` dead zone and a minimum `0.12 s` update interval. These are project-specific historical values, not DFRobot defaults or evidence of the current official plugin interface.
 
-If a publish request loses its HTTP response after the command may have been sent, treat the outcome as uncertain and do not retry blindly. Inspect the bridge and ask about physical movement. In the validated run, the connection closed before the client received a response, while the user observed the servo move.
+If an MCP or loopback request loses its response after an actuator operation may have executed, treat the outcome as uncertain and do not retry blindly. Inspect the official-plugin node state and ask about physical movement.
 
 ## Saving without blocking the API
 

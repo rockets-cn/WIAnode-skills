@@ -1,0 +1,20 @@
+{
+  "dfrobot_wianode_plugin": {
+    "source_repository": "https://github.com/DFRobot/WIAnode-examples",
+    "source_commit": "688c851a5dc3f976ed113e40ea3602e8abd701d7",
+    "source_path": "WIAnode-Touchdesigner-plugin/WIAnode_plugin_10828.tox",
+    "bundled_path": "dfrobot-wianode/WIAnode_plugin_10828.tox",
+    "sha256": "d876e029001bf50376fdc94a98adce511e54b4756b525d098a1a91a04b0d66cd"
+  },
+  "touchdesigner_mcp_bundle": {
+    "source_repository": "https://github.com/8beeeaaat/touchdesigner-mcp",
+    "source_release": "v2.0.0",
+    "source_archive": "https://github.com/8beeeaaat/touchdesigner-mcp/releases/latest/download/touchdesigner-mcp-td.zip",
+    "source_archive_sha256": "4199768925defb83db58446322333cb80e7fb268a68c4e42a5cbbc089e6b5ab1",
+    "bundled_path": "touchdesigner-mcp-td/mcp_webserver_base.tox",
+    "tox_sha256": "815fdfdfb355536cdea48470ad991afc431303a1e3cb60b7cee207e98908ae78",
+    "api_version": "1.5.0",
+    "license_path": "touchdesigner-mcp-td/LICENSE"
+  },
+  "checked_at": "2026-09-01"
+}

@@ -11,14 +11,14 @@
 | Skill | 用途 |
 | --- | --- |
 | `$wianode-config` | 引导配置设备、校验 `config.txt`、诊断网络和 MQTT |
-| `$wianode-touchdesigner` | 通过 [touchdesigner-mcp](https://github.com/8beeeaaat/touchdesigner-mcp) 用自然语言搭建、修改和排查 WIAnode 交互网络 |
+| `$wianode-touchdesigner` | 使用 DFRobot 官方 WIAnode 插件接入设备，并通过 [touchdesigner-mcp](https://github.com/8beeeaaat/touchdesigner-mcp) 检查和操作 TouchDesigner 网络 |
 | `$wianode-k10-platformio` | 用 PlatformIO 创建、烧录和验证 UNIHIKER K10 与 WIAnode 的 MQTT 交互项目 |
 | `$wianode-k10-micropython` | 用 MicroPython 创建、上传和验证 UNIHIKER K10 与 WIAnode 的 MQTT 交互项目 |
 
 > ⚠️ **实机测试状态**
 >
 > - `$wianode-k10-micropython`：**尚未与真实 WIAnode 设备完成实机联调验证**。2026-08 已在真实 K10（MicroPython 1.26 / 固件 v0.9.2）上验证了与本机 MQTT broker 的双向收发；但 WIAnode 特有的 MQTT 行为（双连接规则、QoS、按 client_id 的会话状态等）、传感器/执行器实测，以及固件版本间的兼容性，仍需在真实 WIAnode 上确认。相关内容仅供参考。
-> - `$wianode-touchdesigner`：**已完成实机验证**。2026-09 在 Windows、TouchDesigner `2025.33070`、touchdesigner-mcp `v2.0.0` 与真实 WIAnode 上验证了组件导入、回环 API、MCP 注册、现有项目修复、P1 旋钮精确控制 `0–300` 粒子，以及 P5 `SER0053` (`servo300`) 在确认的 `30–270°` 行程内随粒子数量连续运动。其他 TouchDesigner/固件版本与机械结构仍需重新确认参数。
+> - `$wianode-touchdesigner`：**已完成实机验证，但历史自定义数据桥不作为官方插件规范。** 2026-09 在 Windows、TouchDesigner `2025.33070`、touchdesigner-mcp `v2.0.0` 与真实 WIAnode 上验证了 MCP 注册、现有项目修复和自定义粒子/舵机流程。当前 skill 的 WIAnode 数据接入以 [DFRobot/WIAnode-examples](https://github.com/DFRobot/WIAnode-examples) 中的 `WIAnode_plugin_10828.tox` 和官方 `.toe` 示例为准；历史项目参数仅作下游 TouchDesigner 经验，不能替代官方插件证据。
 
 ### `$wianode-config` 主要能力
 
@@ -34,9 +34,10 @@
 
 ### `$wianode-touchdesigner` 主要能力
 
-- 检查并复用现有 TouchDesigner 网络、WIAnode 数据桥和 MQTT 节点，识别 `mcp_webserver_base1` 等静默重名组件。
-- 自动准备官方 TouchDesigner MCP 组件、导入当前项目并注册 Codex；注册后的当前 Codex 进程仍需重启才能获得 MCP tools。
-- 用可检查的 CHOP/POP/TOP 数据流映射真实传感器值；需要精确数量时使用显式点数，而不是把 Particle SOP 出生率误当作当前粒子数。
+- 只使用 [DFRobot/WIAnode-examples](https://github.com/DFRobot/WIAnode-examples) 的 `WIAnode_plugin_10828.tox` 和对应官方 `.toe` 示例处理 WIAnode 数据；不自行创建 MQTT bridge、猜测数据键或执行器格式。
+- 保留 touchdesigner-mcp 作为自动化控制层，使用其节点检查、参数读写、节点创建/删除、方法调用、Python 执行、错误检查、API 发现和 TOP 截图能力。
+- 自动准备 DFRobot WIAnode 插件与 touchdesigner-mcp 组件，明确两者职责；MCP 注册后的当前 Codex 进程仍需重启才能获得 tools。
+- 用可检查的 CHOP/POP/TOP 数据流映射官方插件实际暴露的值；需要精确数量时使用显式点数，而不是把 Particle SOP 出生率误当作当前粒子数。
 - 对视觉映射做端点/中间值和输出画面验证，并检查整个节点树错误。
 - 真实执行器采用“单次指令确认 → 物理确认 → 连续输出授权”的流程；支持范围限制、平滑、死区、发送间隔、双层输出锁和明确停止方法。
 
@@ -108,13 +109,16 @@ git -C "$HOME/.codex/repos/WIAnode-skills" pull
 
 安装后检查 Codex 的 skill 列表中是否同时出现 `wianode-config`、`wianode-touchdesigner`、`wianode-k10-platformio` 和 `wianode-k10-micropython`。曾按旧版说明把整个仓库克隆为 `wianode-config` 的用户，需要先保留本地改动，再迁移到上述多目录结构。
 
-`$wianode-touchdesigner` 还需要 TouchDesigner MCP。首次调用时，skill 可以自动下载官方组件、通过 Computer Use 把 `mcp_webserver_base.tox` 导入当前 TouchDesigner 项目的 `/project1`，并为 Codex 注册服务：
+`$wianode-touchdesigner` 已在 skill 的 `assets/` 目录内置两个独立组件：
+
+- WIAnode 设备层：直接导入 `assets/dfrobot-wianode/WIAnode_plugin_10828.tox`；文件来自 [DFRobot/WIAnode-examples](https://github.com/DFRobot/WIAnode-examples)，具体设备行为参考该仓库内对应的官方 `.toe` 示例。
+- 自动化层：保持 `assets/touchdesigner-mcp-td/` 目录结构不变，将其中的 `mcp_webserver_base.tox` 导入当前项目的 `/project1`，并为 Codex 注册服务：
 
 ```powershell
 codex mcp add touchdesigner -- npx -y touchdesigner-mcp-server@latest --stdio
 ```
 
-如果当前环境无法控制 TouchDesigner UI，skill 会返回已校验的 `.tox` 绝对路径，只保留一次拖入 `/project1` 的手动步骤。完成注册后仍需重启 Codex，并保持 TouchDesigner 与 `mcp_webserver_base` 运行。实测中已有组件可能位于画布外，重复导入还可能无提示地生成 `mcp_webserver_base1`；新版 skill 会先探测 `127.0.0.1:9981`，并在导入后重新枚举同名前缀组件。
+如果当前环境无法控制 TouchDesigner UI，skill 会分别返回两个内置 `.tox` 的绝对路径并说明剩余导入步骤。完成 MCP 注册后仍需重启 Codex，并保持 TouchDesigner 与 `mcp_webserver_base` 运行。`mcp_webserver_base.tox` 只负责自动化，不能替代 `WIAnode_plugin_10828.tox`。资产来源与 SHA-256 记录在 `assets/SOURCES.json`。
 
 ### 使用
 
@@ -141,16 +145,16 @@ TouchDesigner 中可以直接描述目标，例如：
 ```
 
 ```text
-使用 $wianode-touchdesigner，让 P5 上的 SER0053 舵机转到 200°；发送前先向我展示 MQTT 指令并确认。
+使用 $wianode-touchdesigner，参考 DFRobot 官方 servo300 示例，让 P5 上的 SER0053 舵机转到 200°；执行前展示实际检查到的官方插件参数或操作并向我确认。
 ```
 
 ```text
 使用 $wianode-touchdesigner，让 P1 旋钮精确控制 0–300 个粒子，再让 P5 的 SER0053 像秤的指针一样随粒子数量在 30–270° 之间运动；先锁定输出并验证画面，单次测试和连续输出分别向我确认。
 ```
 
-TouchDesigner skill 会先检查当前项目与 MQTT 连接，优先复用已有节点；传感器读取可直接构建，向 `topic_output` 发送真实执行器指令前则必须单独确认。
+TouchDesigner skill 会先用 MCP 检查当前项目，再导入或复用 DFRobot 官方 WIAnode 插件，并从匹配的官方 `.toe` 示例确认设备侧路径。自定义视觉网络只能接在实际观察到的官方插件输出之后；真实执行器操作仍需单独确认。
 
-实测经验：Particle SOP 的出生率不是精确粒子数量；TouchDesigner 保存可能生成 `.1.toe`、`.2.toe` 并弹出覆盖窗口；发布请求若在返回前断开，指令可能已经生效，不能盲目重发。这些恢复与验证步骤已整理进 [field-tested-workflow.md](skills/wianode-touchdesigner/references/field-tested-workflow.md)。
+实测经验：Particle SOP 的出生率不是精确粒子数量；TouchDesigner 保存可能生成 `.1.toe`、`.2.toe` 并弹出覆盖窗口；执行器请求若在返回前断开，操作可能已经生效，不能盲目重试。这些恢复与验证步骤已整理进 [field-tested-workflow.md](skills/wianode-touchdesigner/references/field-tested-workflow.md)。
 
 UNIHIKER K10 可以直接描述目标，例如：
 
@@ -276,20 +280,36 @@ python skills/wianode-config/scripts/validate_config.py <WIAnode盘符>:\config.
         ├── SKILL.md
         ├── agents/
         │   └── openai.yaml
+        ├── assets/
+        │   ├── SOURCES.json
+        │   ├── dfrobot-wianode/
+        │   │   └── WIAnode_plugin_10828.tox
+        │   └── touchdesigner-mcp-td/
+        │       ├── mcp_webserver_base.tox
+        │       ├── import_modules.py
+        │       └── modules/
         ├── references/
         │   ├── automatic-install.md
         │   ├── interaction-patterns.md
-        │   ├── touchdesigner-mcp.md
-        │   └── wianode-bridge.md
+        │   ├── official-wianode-plugin.md
+        │   └── touchdesigner-mcp.md
         ├── scripts/
-        │   └── prepare_touchdesigner_mcp.py
+        │   ├── prepare_touchdesigner_mcp.py
+        │   └── prepare_wianode_td_plugin.py
         └── tests/
-            └── test_prepare_touchdesigner_mcp.py
+            ├── test_bundled_assets.py
+            ├── test_prepare_touchdesigner_mcp.py
+            └── test_prepare_wianode_td_plugin.py
 ```
 
 ### 文档依据
 
-配置字段、接口类型、传感器清单、MQTT 主题和指示灯含义整理自 [DFRobot WIAnode 官方 Wiki](https://wiki.dfrobot.com.cn/WIAnode)。K10 PlatformIO 环境基于 [DFRobot/platform-unihiker](https://github.com/DFRobot/platform-unihiker)，MQTT 和 JSON 模板分别使用 [PubSubClient](https://github.com/knolleary/pubsubclient) 与 [ArduinoJson](https://github.com/bblanchon/ArduinoJson)。K10 MicroPython 项目使用固件内置的 `k10_base.WiFi` / `k10_base.MqttClient` 和 `unihiker_k10` 屏幕 API。
+配置字段、接口类型、传感器清单、MQTT 主题和指示灯含义整理自 [DFRobot WIAnode 官方 Wiki](https://wiki.dfrobot.com.cn/WIAnode)。TouchDesigner 的 WIAnode 设备层以 [DFRobot/WIAnode-examples](https://github.com/DFRobot/WIAnode-examples) 的插件和示例为准；[touchdesigner-mcp](https://github.com/8beeeaaat/touchdesigner-mcp) 仅作为自动化控制层。K10 PlatformIO 环境基于 [DFRobot/platform-unihiker](https://github.com/DFRobot/platform-unihiker)，MQTT 和 JSON 模板分别使用 [PubSubClient](https://github.com/knolleary/pubsubclient) 与 [ArduinoJson](https://github.com/bblanchon/ArduinoJson)。K10 MicroPython 项目使用固件内置的 `k10_base.WiFi` / `k10_base.MqttClient` 和 `unihiker_k10` 屏幕 API。
+
+### Reference
+
+- DFRobot WIAnode TouchDesigner plugin and examples: [https://github.com/DFRobot/WIAnode-examples](https://github.com/DFRobot/WIAnode-examples)
+- TouchDesigner automation MCP: [https://github.com/8beeeaaat/touchdesigner-mcp](https://github.com/8beeeaaat/touchdesigner-mcp)
 
 <a id="english"></a>
 
@@ -300,14 +320,14 @@ A collection of Codex skills for [DFRobot WIAnode](https://wiki.dfrobot.com.cn/W
 | Skill | Purpose |
 | --- | --- |
 | `$wianode-config` | Guide device setup, validate `config.txt`, and diagnose network or MQTT issues |
-| `$wianode-touchdesigner` | Use [touchdesigner-mcp](https://github.com/8beeeaaat/touchdesigner-mcp) to build, modify, and troubleshoot WIAnode interactions from natural-language requests |
+| `$wianode-touchdesigner` | Use DFRobot's official WIAnode plugin for device I/O and [touchdesigner-mcp](https://github.com/8beeeaaat/touchdesigner-mcp) to inspect and operate TouchDesigner networks |
 | `$wianode-k10-platformio` | Create, flash, and verify UNIHIKER K10 PlatformIO projects that interact with WIAnode over MQTT |
 | `$wianode-k10-micropython` | Create, upload, and verify UNIHIKER K10 MicroPython projects that interact with WIAnode over MQTT |
 
 > ⚠️ **Hardware test status**
 >
 > - `$wianode-k10-micropython`: **not yet validated end-to-end with a real WIAnode device.** In 2026-08, the K10 side (MicroPython 1.26 / firmware v0.9.2) was verified against a local MQTT broker with bidirectional data flow; however, WIAnode-specific MQTT behavior (the two-connection rule, QoS handling, per-client session state), sensor/actuator tests, and cross-firmware compatibility still need confirmation on a real WIAnode. Treat the content as reference only.
-> - `$wianode-touchdesigner`: **field-tested in a real project.** In 2026-09, Windows, TouchDesigner `2025.33070`, touchdesigner-mcp `v2.0.0`, and a real WIAnode were used to verify component import, the loopback API, MCP registration, repair of an existing project, exact P1-driven `0–300` particle counts, and continuous P5 `SER0053` (`servo300`) motion over a confirmed `30–270°` mechanical range. Reconfirm parameters for other TouchDesigner/firmware versions and mechanisms.
+> - `$wianode-touchdesigner`: **field-tested, but its historical custom bridge is not an official plugin specification.** In 2026-09, Windows, TouchDesigner `2025.33070`, touchdesigner-mcp `v2.0.0`, and a real WIAnode were used to verify MCP registration, project repair, and a custom particle/servo flow. The current skill uses `WIAnode_plugin_10828.tox` and official `.toe` examples from [DFRobot/WIAnode-examples](https://github.com/DFRobot/WIAnode-examples) as the authority for device-facing behavior.
 
 ### `$wianode-config` capabilities
 
@@ -323,9 +343,10 @@ This project does not develop WIAnode firmware, and a general request to configu
 
 ### `$wianode-touchdesigner` capabilities
 
-- Inspects and reuses existing TouchDesigner networks, WIAnode data bridges, and MQTT nodes, including detection of silently suffixed components such as `mcp_webserver_base1`.
-- Prepares and imports the official TouchDesigner MCP component and registers it with Codex; the current Codex host still needs a restart before newly registered MCP tools appear.
-- Builds inspectable CHOP/POP/TOP mappings from observed sensor values, using explicit point populations instead of treating Particle SOP birth rate as an exact current count.
+- Uses only `WIAnode_plugin_10828.tox` and matching official `.toe` examples from [DFRobot/WIAnode-examples](https://github.com/DFRobot/WIAnode-examples) for WIAnode-facing behavior; it does not invent an MQTT bridge, data key, or actuator format.
+- Retains touchdesigner-mcp as the automation layer for node inspection, parameter reads/updates, node creation/deletion, method calls, bounded Python, error checks, API discovery, and TOP capture.
+- Prepares the DFRobot plugin and the touchdesigner-mcp component separately; the current Codex host still needs a restart before newly registered MCP tools appear.
+- Builds inspectable CHOP/POP/TOP mappings downstream of values actually observed from the official plugin.
 - Verifies visual mappings at endpoints/interior values, inspects output images, and checks the complete node tree for errors.
 - Uses a staged actuator flow—single-command confirmation, physical confirmation, then continuous-output authorization—with clamps, smoothing, dead zones, publish intervals, dual interlocks, and an explicit stop method.
 
@@ -399,13 +420,16 @@ git -C "$HOME/.codex/repos/WIAnode-skills" pull
 
 After installation, confirm that `wianode-config`, `wianode-touchdesigner`, `wianode-k10-platformio`, and `wianode-k10-micropython` appear in the Codex skill list. Users who previously cloned the whole repository directly as `wianode-config` should preserve any local changes and migrate to the multi-directory layout above.
 
-`$wianode-touchdesigner` also requires TouchDesigner MCP. On first use, the skill can download the official component, use Computer Use to import `mcp_webserver_base.tox` into `/project1` in the current TouchDesigner project, and register the MCP server with Codex:
+`$wianode-touchdesigner` bundles two separate components under its `assets/` directory:
+
+- Device layer: import `assets/dfrobot-wianode/WIAnode_plugin_10828.tox`. It is sourced from [DFRobot/WIAnode-examples](https://github.com/DFRobot/WIAnode-examples); use the matching upstream `.toe` examples as the device-behavior reference.
+- Automation layer: keep `assets/touchdesigner-mcp-td/` intact, import its `mcp_webserver_base.tox` into `/project1`, and register the server with Codex:
 
 ```text
 codex mcp add touchdesigner -- npx -y touchdesigner-mcp-server@latest --stdio
 ```
 
-If TouchDesigner UI control is unavailable, the skill returns a validated absolute path to the `.tox` file, leaving only the drag-and-drop into `/project1` as a manual step. Restart Codex after registration, and keep TouchDesigner and `mcp_webserver_base` running. A healthy existing component can be off-screen, and importing again may silently create `mcp_webserver_base1`; the updated skill probes `127.0.0.1:9981` first and re-enumerates matching components after import.
+If TouchDesigner UI control is unavailable, the skill returns absolute paths for both bundled `.tox` files and explains the remaining imports. Restart Codex after MCP registration, and keep TouchDesigner and `mcp_webserver_base` running. `mcp_webserver_base.tox` is only the automation layer and never substitutes for `WIAnode_plugin_10828.tox`. Asset provenance and SHA-256 values are recorded in `assets/SOURCES.json`.
 
 ### Usage
 
@@ -432,16 +456,16 @@ Use $wianode-touchdesigner to map the X axis of the SEN0224 accelerometer to cub
 ```
 
 ```text
-Use $wianode-touchdesigner to move the SER0053 servo on P5 to 200 degrees. Show me the MQTT command and ask for confirmation before sending it.
+Use $wianode-touchdesigner to follow DFRobot's official servo300 example and move the SER0053 servo on P5 to 200 degrees. Show me the inspected official-plugin parameter or operation and ask before applying it.
 ```
 
 ```text
 Use $wianode-touchdesigner to make the P1 knob control exactly 0–300 particles, then drive the P5 SER0053 like a scale pointer over 30–270 degrees. Keep output locked while verifying the visuals, and ask separately before the single test and continuous output.
 ```
 
-The TouchDesigner skill inspects the current project and MQTT connection before editing, and reuses existing nodes where possible. Sensor-driven networks may be built directly; publishing a real actuator command to `topic_output` always requires a separate confirmation.
+The TouchDesigner skill first inspects the current project through MCP, then imports or reuses the DFRobot WIAnode plugin and confirms device-facing behavior from the matching official `.toe` example. Custom visual networks begin only after an official-plugin output is observed; real actuator operations still require separate confirmation.
 
-Field-tested lessons: Particle SOP birth rate is not an exact population control; TouchDesigner saves may create `.1.toe` / `.2.toe` siblings and block on an overwrite modal; and a publish request that loses its response may already have moved the device, so it must not be retried blindly. The recovery and verification workflow is documented in [field-tested-workflow.md](skills/wianode-touchdesigner/references/field-tested-workflow.md).
+Field-tested lessons: Particle SOP birth rate is not an exact population control; TouchDesigner saves may create `.1.toe` / `.2.toe` siblings and block on an overwrite modal; and an actuator request that loses its response may already have taken effect, so it must not be retried blindly. The recovery and verification workflow is documented in [field-tested-workflow.md](skills/wianode-touchdesigner/references/field-tested-workflow.md).
 
 Describe a UNIHIKER K10 project directly:
 
@@ -568,17 +592,33 @@ The validator never displays the Wi-Fi password value. It returns exit code `0` 
         ├── SKILL.md
         ├── agents/
         │   └── openai.yaml
+        ├── assets/
+        │   ├── SOURCES.json
+        │   ├── dfrobot-wianode/
+        │   │   └── WIAnode_plugin_10828.tox
+        │   └── touchdesigner-mcp-td/
+        │       ├── mcp_webserver_base.tox
+        │       ├── import_modules.py
+        │       └── modules/
         ├── references/
         │   ├── automatic-install.md
         │   ├── interaction-patterns.md
-        │   ├── touchdesigner-mcp.md
-        │   └── wianode-bridge.md
+        │   ├── official-wianode-plugin.md
+        │   └── touchdesigner-mcp.md
         ├── scripts/
-        │   └── prepare_touchdesigner_mcp.py
+        │   ├── prepare_touchdesigner_mcp.py
+        │   └── prepare_wianode_td_plugin.py
         └── tests/
-            └── test_prepare_touchdesigner_mcp.py
+            ├── test_bundled_assets.py
+            ├── test_prepare_touchdesigner_mcp.py
+            └── test_prepare_wianode_td_plugin.py
 ```
 
 ### Documentation sources
 
-Configuration fields, interface types, supported sensors, MQTT topics, and indicator meanings are based on the [official DFRobot WIAnode Wiki](https://wiki.dfrobot.com.cn/WIAnode). The K10 PlatformIO environment follows [DFRobot/platform-unihiker](https://github.com/DFRobot/platform-unihiker); the MQTT and JSON templates use [PubSubClient](https://github.com/knolleary/pubsubclient) and [ArduinoJson](https://github.com/bblanchon/ArduinoJson). The K10 MicroPython project uses the firmware's built-in `k10_base.WiFi` / `k10_base.MqttClient` and the `unihiker_k10` screen API.
+Configuration fields, interface types, supported sensors, MQTT topics, and indicator meanings are based on the [official DFRobot WIAnode Wiki](https://wiki.dfrobot.com.cn/WIAnode). The TouchDesigner device layer follows the plugin and examples in [DFRobot/WIAnode-examples](https://github.com/DFRobot/WIAnode-examples); [touchdesigner-mcp](https://github.com/8beeeaaat/touchdesigner-mcp) is only the automation layer. The K10 PlatformIO environment follows [DFRobot/platform-unihiker](https://github.com/DFRobot/platform-unihiker); the MQTT and JSON templates use [PubSubClient](https://github.com/knolleary/pubsubclient) and [ArduinoJson](https://github.com/bblanchon/ArduinoJson). The K10 MicroPython project uses the firmware's built-in `k10_base.WiFi` / `k10_base.MqttClient` and the `unihiker_k10` screen API.
+
+### Reference
+
+- DFRobot WIAnode TouchDesigner plugin and examples: [https://github.com/DFRobot/WIAnode-examples](https://github.com/DFRobot/WIAnode-examples)
+- TouchDesigner automation MCP: [https://github.com/8beeeaaat/touchdesigner-mcp](https://github.com/8beeeaaat/touchdesigner-mcp)

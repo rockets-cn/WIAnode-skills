@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download and safely unpack the official TouchDesigner MCP component bundle."""
+"""Download and safely unpack the touchdesigner-mcp upstream component bundle."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ MAX_UNCOMPRESSED_BYTES = 50 * 1024 * 1024
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Prepare the official touchdesigner-mcp .tox bundle for import."
+        description="Prepare the touchdesigner-mcp upstream .tox bundle for import."
     )
     parser.add_argument(
         "--archive",

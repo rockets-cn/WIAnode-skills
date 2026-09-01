@@ -1,64 +1,61 @@
 ---
 name: wianode-touchdesigner
-description: Build, inspect, modify, and troubleshoot DFRobot WIAnode interactions in TouchDesigner from natural-language requests through the touchdesigner-mcp tools. Use for mapping WIAnode sensors to visuals, audio, or parameters; creating an MQTT bridge; or safely controlling WIAnode actuators from TouchDesigner. Do not use for unrelated TouchDesigner work or WIAnode config.txt editing.
+description: Build, inspect, modify, and troubleshoot DFRobot WIAnode interactions in TouchDesigner. Use the DFRobot WIAnode plugin and examples for device-facing behavior, and use touchdesigner-mcp only to inspect and operate the live TouchDesigner project. Do not use for unrelated TouchDesigner work or WIAnode config.txt editing.
 ---
 
 # WIAnode × TouchDesigner
 
-Translate the user's intended interaction into a small, inspectable TouchDesigner network. Use the installed TouchDesigner MCP tools to operate the live project; do not merely describe clicks when those tools are available.
+Translate the user's intended interaction into a small, inspectable TouchDesigner network. Keep these two components separate:
+
+- **WIAnode device layer:** use the bundled `assets/dfrobot-wianode/WIAnode_plugin_10828.tox`, sourced from [DFRobot/WIAnode-examples](https://github.com/DFRobot/WIAnode-examples). The matching upstream examples remain the authority for WIAnode-facing behavior.
+- **Automation layer:** use the complete bundled `assets/touchdesigner-mcp-td/` package from [touchdesigner-mcp](https://github.com/8beeeaaat/touchdesigner-mcp) to inspect and operate TouchDesigner. Its `mcp_webserver_base.tox` does not replace or define the WIAnode plugin.
 
 ## Route the request
 
-- For MCP installation, connection failure, or tool selection, read [references/touchdesigner-mcp.md](references/touchdesigner-mcp.md). For first-time automatic download, `.tox` import, and Codex MCP registration, also read [references/automatic-install.md](references/automatic-install.md).
-- For creating or repairing the WIAnode MQTT connection, decoding sensor packets, or publishing commands, read [references/wianode-bridge.md](references/wianode-bridge.md).
-- For mapping sensor values to an effect or preparing an actuator command, read [references/interaction-patterns.md](references/interaction-patterns.md).
-- For an existing, partly built project; duplicate MCP components; the post-registration restart gap; save/versioning problems; or a sensor-to-particles-to-servo workflow, read [references/field-tested-workflow.md](references/field-tested-workflow.md).
-- WIAnode `config.txt`, Wi-Fi provisioning, and port-mode changes belong to `$wianode-config`. Finish those before building the TouchDesigner interaction when the device is not configured.
+- Before importing, locating, or using WIAnode components or examples, read [references/official-wianode-plugin.md](references/official-wianode-plugin.md).
+- For MCP installation, connection failure, or tool selection, read [references/touchdesigner-mcp.md](references/touchdesigner-mcp.md). For first-time automatic preparation, `.tox` import, and Codex MCP registration, also read [references/automatic-install.md](references/automatic-install.md).
+- For mapping a verified official-plugin output to a visual or actuator workflow, read [references/interaction-patterns.md](references/interaction-patterns.md).
+- For an existing, partly built project; duplicate MCP components; the post-registration restart gap; save/versioning problems; or a sensor-to-particles workflow, read [references/field-tested-workflow.md](references/field-tested-workflow.md).
+- WIAnode `config.txt`, Wi-Fi provisioning, and port-mode changes belong to `$wianode-config`.
 
-## Required context
+## Source boundary
 
-Collect only values the task actually needs:
+Do not recreate the WIAnode connection with a custom MQTT Client DAT, callback script, external bridge, guessed topic, or guessed payload. Do not infer official plugin parameters or data keys from module names. If the DFRobot plugin or relevant example cannot be obtained or inspected, stop the WIAnode-facing part and report the missing evidence.
 
-- the WIAnode IP shown after pressing `WKUP`;
-- each involved port, module name, and printed SKU;
-- the desired TouchDesigner target and behavior;
-- any input/output range, smoothing, threshold, or fail-safe behavior that cannot be inferred from the existing project.
-
-Treat a generic module name or guessed port as unconfirmed. Sensor-only exploration may continue with an explicit assumption, but never publish an actuator command until its physical port, SKU, configured mode, and safe range are confirmed.
+Custom CHOP/POP/TOP processing is allowed only downstream of a value actually exposed by the official plugin or official example. Label those downstream networks as project-specific, not DFRobot behavior.
 
 ## Live-project workflow
 
-1. Confirm that the TouchDesigner MCP tools are callable. Start with `get_td_info`, then inspect the requested parent network with `get_td_nodes`. If the tools are missing or cannot reach TouchDesigner, run the automatic bootstrap in `references/automatic-install.md` when UI control is available; otherwise provide the exact `.tox` path and remaining manual action. A newly registered MCP server does not appear in the current Codex host until restart; use the bounded loopback bootstrap in `references/field-tested-workflow.md` only when its preconditions hold. Do not claim that the live project was changed until the component or endpoint is verified.
-2. Inspect before editing. Look for an existing WIAnode component, MQTT Client DAT, `/project1/wianode_bridge`, and every `/project1/mcp_webserver_base*` component. Prefer the user's existing network and names. Treat a suffixed MCP component as possible collision evidence, not as proof that the original is invalid. Do not replace, delete, or broadly reformat adjacent nodes.
-3. Establish the data path. Reuse the official WIAnode component when present. Otherwise create a dedicated `wianode_bridge` Base COMP with an MQTT Client DAT, callbacks DAT, and sensor-value table as described in `references/wianode-bridge.md`.
-4. Verify the connection before building downstream logic: check the MQTT DAT's `isConnected`, subscribe to `topic_input`, observe at least one valid JSON object when live sensor data is available, and report the actual keys discovered.
-5. Build the requested interaction as the smallest reversible slice. Prefer normal TouchDesigner nodes and parameters for visible dataflow. Use `execute_python_script` only for operations not expressible through node creation, parameter updates, or node methods; keep scripts bounded and return a compact `result` object.
-6. Preserve existing behavior. Put new nodes under the agreed parent, use descriptive names, avoid deleting unknown nodes, and change only parameters that implement the request.
-7. Verify after the final edit with `get_td_node_errors`. For visual output, inspect the relevant TOP with `get_top_image`. Exercise meaningful endpoints for count/range mappings, re-read changed parameters, and save only after the target path and overwrite behavior are known. When physical observation is unavailable, label it `待用户确认`.
+1. Confirm the automation layer. Start with `get_td_info`, then `describe_td_tools` when the installed schemas are unfamiliar, and inspect `/project1` with `get_td_nodes`. If the MCP tools are unavailable, import the bundled `assets/touchdesigner-mcp-td/mcp_webserver_base.tox` with its directory intact and follow `references/automatic-install.md`. A newly registered MCP server normally requires a Codex restart.
+2. Confirm the device layer. Locate the imported DFRobot WIAnode component and inspect its actual path and parameters. If absent, import the bundled `assets/dfrobot-wianode/WIAnode_plugin_10828.tox` as described in `references/official-wianode-plugin.md`. Do not substitute `mcp_webserver_base.tox` for it.
+3. Use the closest official `.toe` example as the behavioral reference. Inspect it in a separate project or instance when opening it would replace the user's current project. Copy only the relevant verified pattern into the target project.
+4. Inspect before editing. Use `get_td_nodes` and `get_td_node_parameters`; use `get_td_classes`, `get_td_class_details`, or `get_td_module_help` instead of guessing unfamiliar TouchDesigner APIs. Preserve adjacent nodes and existing names.
+5. Build the smallest reversible downstream slice with `create_td_node`, `update_td_node_parameters`, and `exec_node_method`. Use `execute_python_script` only when the operation is not available through the narrower tools, and keep the script bounded and inspectable.
+6. Delete only nodes created by the current operation and only when rollback or cleanup requires it. Never delete or replace an existing official WIAnode component, official-example network, or MCP component without identifying it and obtaining authorization when replacement is necessary.
+7. Verify with re-read parameters and `get_td_node_errors`. For visual output, capture the relevant TOP with `get_top_image`. Report the official component/example used and distinguish verified TouchDesigner state from physical behavior that remains `待用户确认`.
 
 ## Hardware-output confirmation gate
 
-TouchDesigner network edits requested by the user are reversible and may proceed. Publishing to `topic_output` can move hardware or drive lights, so it requires a separate confirmation immediately before the first real publish.
+TouchDesigner network edits requested by the user are reversible and may proceed. A real actuator action still requires a separate confirmation immediately before the first output.
 
-Show this preview without exposing credentials:
+Derive the command path and value format from the imported DFRobot plugin or the matching official example. Show, without credentials:
 
-- WIAnode IP and MQTT topic;
-- exact JSON payload;
+- official example or inspected official-plugin node used as evidence;
 - physical port, module, SKU, and configured mode;
-- allowed range and the clamped value to be sent;
-- expected physical effect and how to stop it.
+- exact official-plugin parameter/value or command that will be applied;
+- allowed range, clamped value, expected effect, and stop method.
 
-Ask `确认发送上述 WIAnode 控制指令吗？` Publish only after an affirmative reply to that preview. Send one bounded command, do not set MQTT retain unless explicitly requested, then report the broker result separately from the unobservable physical result. If the request is for continuous control, keep it disarmed until the user confirms the physical response and explicitly authorizes the continuous mapping, including its range, dead zone/rate limit, and stop method. A prior request to build the network is not authorization to actuate hardware.
+Ask `确认执行上述 WIAnode 控制操作吗？` Perform one bounded operation only after an affirmative reply. Report TouchDesigner/plugin acceptance separately from physical motion. Continuous control requires another explicit authorization after the user confirms the single physical test, including its range, dead zone/rate limit, and stop method.
 
 ## Completion report
 
 Report:
 
 - TouchDesigner project path and nodes created or changed;
-- WIAnode IP, confirmed port/SKU, subscribed sensor keys, and mappings;
-- MQTT and node-error verification results;
-- actuator commands actually sent, if any;
-- whether continuous output is armed and the exact way to stop it;
+- DFRobot plugin path/source and official example used;
+- WIAnode port/SKU and actual plugin outputs or parameters observed;
+- MCP connection, parameter re-read, node-error, and image verification results;
+- actuator operations actually performed and whether continuous output is armed;
 - visual or physical checks that remain `待用户确认`.
 
 Never expose Wi-Fi or MQTT passwords in summaries, screenshots, node labels, or returned script results.
